@@ -2060,7 +2060,7 @@
     <Image Include="Resources\zoom.png" />
   </ItemGroup>
   <ItemGroup>
-    <Natvis Include="python36.natvis" />
+    <Natvis Include="python310.natvis" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

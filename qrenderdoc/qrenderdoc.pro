@@ -76,9 +76,9 @@ win32 {
 	# Include and link against python
 	INCLUDEPATH += $$_PRO_FILE_PWD_/3rdparty/python/include
 	!contains(QMAKE_TARGET.arch, x86_64) {
-		LIBS += $$_PRO_FILE_PWD_/3rdparty/python/Win32/python36.lib
+		LIBS += $$_PRO_FILE_PWD_/3rdparty/python/Win32/python310.lib
 	} else {
-		LIBS += $$_PRO_FILE_PWD_/3rdparty/python/x64/python36.lib
+		LIBS += $$_PRO_FILE_PWD_/3rdparty/python/x64/python310.lib
 	}
 
 	# Include and link against PySide2
