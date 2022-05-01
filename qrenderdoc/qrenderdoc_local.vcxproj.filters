@@ -414,9 +414,9 @@
     <ClCompile Include="$(IntDir)generated\moc_CaptureDialog.cpp">
       <Filter>Generated Files</Filter>
     </ClCompile>
-   <ClCompile Include="$(IntDir)generated\moc_ComputeDebugSelector.cpp">
-    <Filter>Generated Files</Filter>
-   </ClCompile>
+    <ClCompile Include="$(IntDir)generated\moc_ComputeDebugSelector.cpp">
+      <Filter>Generated Files</Filter>
+    </ClCompile>
     <ClCompile Include="$(IntDir)generated\moc_ConstantBufferPreviewer.cpp">
       <Filter>Generated Files</Filter>
     </ClCompile>
@@ -980,9 +980,9 @@
     <ClInclude Include="$(IntDir)generated\ui_CaptureDialog.h">
       <Filter>Generated Files</Filter>
     </ClInclude>
-   <ClInclude Include="$(IntDir)generated\ui_ComputeDebugSelector.h">
-    <Filter>Generated Files</Filter>
-   </ClInclude>
+    <ClInclude Include="$(IntDir)generated\ui_ComputeDebugSelector.h">
+      <Filter>Generated Files</Filter>
+    </ClInclude>
     <ClInclude Include="$(IntDir)generated\ui_ConstantBufferPreviewer.h">
       <Filter>Generated Files</Filter>
     </ClInclude>
@@ -1974,6 +1974,6 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <Natvis Include="python36.natvis" />
+    <Natvis Include="python310.natvis" />
   </ItemGroup>
 </Project>
