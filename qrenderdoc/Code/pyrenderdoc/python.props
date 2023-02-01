@@ -6,8 +6,8 @@
 
   <CustomPythonUsed>0</CustomPythonUsed>
 
-  <!-- output file of python36.dll, python36.zip, python36.lib etc -->
-	<PythonMajorMinor>36</PythonMajorMinor>
+  <!-- output file of python310.dll, python310.zip, python310.lib etc -->
+	<PythonMajorMinor>310</PythonMajorMinor>
 
 	<PythonIncludeDir>$(PythonBase)\include</PythonIncludeDir>
 	<PythonImportLib>$(PythonBase)\$(Platform)\python$(PythonMajorMinor).lib</PythonImportLib>
@@ -41,6 +41,9 @@
 	<PythonOverride Condition="'$(Platform)'=='Win32'">$(RENDERDOC_PYTHON_PREFIX32)</PythonOverride>
 	<PythonOverride Condition="'$(Platform)'=='x64'">$(RENDERDOC_PYTHON_PREFIX64)</PythonOverride>
 </PropertyGroup>
+
+<PropertyGroup><PythonMajorMinorTest>310</PythonMajorMinorTest></PropertyGroup>
+<PropertyGroup Condition="'$(CustomPythonUsed)'=='0' AND Exists('$(PythonOverride)\include\Python.h') AND Exists('$(PythonOverride)\python$(PythonMajorMinorTest).zip') AND (Exists('$(PythonOverride)\python$(PythonMajorMinorTest).lib') OR Exists('$(PythonOverride)\libs\python$(PythonMajorMinorTest).lib'))"><CustomPythonUsed>$(PythonMajorMinorTest)</CustomPythonUsed></PropertyGroup>
 
 <PropertyGroup><PythonMajorMinorTest>39</PythonMajorMinorTest></PropertyGroup>
 <PropertyGroup Condition="'$(CustomPythonUsed)'=='0' AND Exists('$(PythonOverride)\include\Python.h') AND Exists('$(PythonOverride)\python$(PythonMajorMinorTest).zip') AND (Exists('$(PythonOverride)\python$(PythonMajorMinorTest).lib') OR Exists('$(PythonOverride)\libs\python$(PythonMajorMinorTest).lib'))"><CustomPythonUsed>$(PythonMajorMinorTest)</CustomPythonUsed></PropertyGroup>
