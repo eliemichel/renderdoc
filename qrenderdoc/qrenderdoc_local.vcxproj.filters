@@ -1986,6 +1986,6 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <Natvis Include="python36.natvis" />
+    <Natvis Include="python311.natvis" />
   </ItemGroup>
 </Project>

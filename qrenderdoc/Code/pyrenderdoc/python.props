@@ -6,8 +6,8 @@
 
   <CustomPythonUsed>0</CustomPythonUsed>
 
-  <!-- output file of python36.dll, python36.zip, python36.lib etc -->
-	<PythonMajorMinor>36</PythonMajorMinor>
+  <!-- output file of python311.dll, python311.zip, python311.lib etc -->
+	<PythonMajorMinor>311</PythonMajorMinor>
 
 	<PythonIncludeDir>$(PythonBase)\include</PythonIncludeDir>
 	<PythonImportLib>$(PythonBase)\$(Platform)\python$(PythonMajorMinor).lib</PythonImportLib>
