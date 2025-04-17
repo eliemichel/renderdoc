@@ -2075,7 +2075,7 @@ and these can be queried with a filter such as <code>$action(flags & Clear|Clear
     if(tokens.isEmpty())
       return [](ICaptureContext *, const rdcstr &, const rdcstr &, uint32_t eventId,
                 const SDChunk *, const ActionDescription *action, const rdcstr &) {
-        return action->eventId == eventId && !(action->flags & ActionFlags::PopMarker);
+        return action && action->eventId == eventId && !(action->flags & ActionFlags::PopMarker);
       };
 
     // we upcast to int64_t so we can compare both unsigned and signed values without losing any

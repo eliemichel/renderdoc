@@ -885,6 +885,9 @@ namespace DXCEnumerateAndCheck {
     <ProjectReference Include="driver\vulkan\renderdoc_vulkan.vcxproj">
       <Project>{88c5dac6-30a0-4cfd-af51-540a977d1f3f}</Project>
     </ProjectReference>
+    <ProjectReference Include="driver\webgpu\renderdoc_webgpu.vcxproj">
+      <Project>{1c2e36e4-9bc4-4d6d-aa52-fc92e75dc3cb}</Project>
+    </ProjectReference>
     <ProjectReference Include="renderdoc_version.vcxproj">
       <Project>{257fd75c-4d17-4a23-a754-23bfd85887a0}</Project>
     </ProjectReference>
