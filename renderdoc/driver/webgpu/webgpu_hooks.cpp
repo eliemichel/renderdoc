@@ -2,11 +2,72 @@
 
 #include "hooks/hooks.h"
 #include "common/common.h"
+#include "core/core.h"
+
+#include "serialise/rdcfile.h"
+#include "serialise/streamio.h"
 
 #include "official/webgpu.h"
 
-// TODO(elie): remove that, it's only for debug Bell
+// TODO(elie): remove that, it's only for debug Bell and Sleep
 #include <windows.h>
+
+class WebGPUCapturer : public IFrameCapturer
+{
+public:
+  RDCDriver GetFrameCaptureDriver() override { return GetDriverType(); }
+
+  void StartFrameCapture(DeviceOwnedWindow devWnd) override {
+    RDCLOG("Starting WebGPU capture");
+    MessageBeep(MB_OK);
+  }
+
+  bool EndFrameCapture(DeviceOwnedWindow devWnd) override
+  {
+    RDCLOG("Ending WebGPU capture");
+    const uint32_t frameNumber = 0;
+    RenderDoc::FramePixels pixels;
+    RDCFile *rdc = RenderDoc::Inst().CreateRDC(GetDriverType(), frameNumber, pixels);
+
+    StreamWriter *captureWriter = NULL;
+
+    if(rdc)
+    {
+      SectionProperties props;
+
+      // Compress with LZ4 so that it's fast
+      props.name = "WebGPU Capture";
+      props.flags = SectionFlags::LZ4Compressed;
+      props.version = 0;
+      props.type = SectionType::FrameCapture;
+
+      captureWriter = rdc->WriteSection(props);
+    }
+    else
+    {
+      captureWriter = new StreamWriter(StreamWriter::InvalidStream);
+    }
+
+    RenderDoc::Inst().SetProgress(CaptureProgress::SerialiseFrameContents, 0.0);
+    Sleep(1000);
+    RenderDoc::Inst().SetProgress(CaptureProgress::SerialiseFrameContents, 0.5);
+    Sleep(1000);
+    RenderDoc::Inst().SetProgress(CaptureProgress::SerialiseFrameContents, 1.0);
+
+    RenderDoc::Inst().FinishCaptureWriting(rdc, frameNumber);
+
+    return true;
+  }
+
+  bool DiscardFrameCapture(DeviceOwnedWindow devWnd) override {
+    const uint32_t frameNumber = 0;
+    RenderDoc::Inst().FinishCaptureWriting(NULL, frameNumber);
+    return true;
+  }
+
+private:
+  static RDCDriver GetDriverType() { return RDCDriver::Custom0; }
+};
 
 class WebGPUHook : LibraryHook
 {
@@ -26,6 +87,8 @@ public:
 
 private:
   static WebGPUHook webgpuHooks;
+
+  WebGPUCapturer capturer;
 
   struct HookedFunctions
   {
@@ -53,14 +116,22 @@ private:
   // Hook destinations
   static WGPUInstance wgpuCreateInstance_hook(WGPUInstanceDescriptor const *descriptor) {
     RDCDEBUG("Intercepted 'wgpuCreateInstance'!");
-    MessageBeep(MB_OK);
+    //MessageBeep(MB_OK);
+
+    DeviceOwnedWindow dev(&webgpuHooks, NULL);
+
+    // TODO: Dunno how to start the capture...
+    RenderDoc::Inst().AddFrameCapturer(dev, &webgpuHooks.capturer);
+    RenderDoc::Inst().StartFrameCapture(dev);
+    RenderDoc::Inst().EndFrameCapture(dev);
+
     return webgpuHooks.procs.wgpuCreateInstance(descriptor);
   }
 
   static void wgpuInstanceRelease_hook(WGPUInstance instance)
   {
     RDCDEBUG("Intercepted 'wgpuReleaseInstance'!");
-    MessageBeep(MB_OK);
+    //MessageBeep(MB_OK);
     webgpuHooks.procs.wgpuInstanceRelease(instance);
   }
 };
