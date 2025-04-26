@@ -79,10 +79,12 @@ public:
     // TODO(elie): Add cases for other OSes and backends
     LibraryHooks::RegisterLibraryHook("webgpu_dawn.dll", NULL);
 
+    LoadProcs();
+
     hooks.CreateInstance.Register("webgpu_dawn.dll", "wgpuCreateInstance", wgpuCreateInstance_hook);
     hooks.InstanceRelease.Register("webgpu_dawn.dll", "wgpuInstanceRelease", wgpuInstanceRelease_hook);
 
-    LoadProcs();
+    RenderDoc::Inst().AddDeviceFrameCapturer(&webgpuHooks, &webgpuHooks.capturer);
   }
 
 private:
@@ -116,14 +118,9 @@ private:
   // Hook destinations
   static WGPUInstance wgpuCreateInstance_hook(WGPUInstanceDescriptor const *descriptor) {
     RDCDEBUG("Intercepted 'wgpuCreateInstance'!");
-    //MessageBeep(MB_OK);
 
-    DeviceOwnedWindow dev(&webgpuHooks, NULL);
-
-    // TODO: Dunno how to start the capture...
-    RenderDoc::Inst().AddFrameCapturer(dev, &webgpuHooks.capturer);
-    RenderDoc::Inst().StartFrameCapture(dev);
-    RenderDoc::Inst().EndFrameCapture(dev);
+    // Start the capture
+    RenderDoc::Inst().StartFrameCapture(DeviceOwnedWindow(&webgpuHooks, NULL));
 
     return webgpuHooks.procs.wgpuCreateInstance(descriptor);
   }
@@ -131,7 +128,10 @@ private:
   static void wgpuInstanceRelease_hook(WGPUInstance instance)
   {
     RDCDEBUG("Intercepted 'wgpuReleaseInstance'!");
-    //MessageBeep(MB_OK);
+
+    // End the capture
+    RenderDoc::Inst().EndFrameCapture(DeviceOwnedWindow(&webgpuHooks, NULL));
+
     webgpuHooks.procs.wgpuInstanceRelease(instance);
   }
 };
