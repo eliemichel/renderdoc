@@ -12,9 +12,12 @@ void WebGPUCapturer::StartFrameCapture(DeviceOwnedWindow devWnd)
 bool WebGPUCapturer::EndFrameCapture(DeviceOwnedWindow devWnd)
 {
   RDCLOG("Ending WebGPU capture");
-  const uint32_t frameNumber = 0;
-  RenderDoc::FramePixels pixels;
+  MessageBeep(MB_OK);
+  const uint32_t frameNumber = 0;    // TODO(elie)
+  RenderDoc::FramePixels pixels;     // TODO(elie)
   RDCFile *rdc = RenderDoc::Inst().CreateRDC(GetDriverType(), frameNumber, pixels);
+
+  RenderDoc::Inst().SetProgress(CaptureProgress::SerialiseFrameContents, 0.0);
 
   StreamWriter *captureWriter = NULL;
 
@@ -25,7 +28,7 @@ bool WebGPUCapturer::EndFrameCapture(DeviceOwnedWindow devWnd)
     // Compress with LZ4 so that it's fast
     props.name = "WebGPU Capture";
     props.flags = SectionFlags::LZ4Compressed;
-    props.version = 0x01;    // TODO(elie): Connect with WebGPUInitParams::CurrentVersion
+    props.version = WebGPUInitParams::CurrentVersion;
     props.type = SectionType::FrameCapture;
 
     captureWriter = rdc->WriteSection(props);
@@ -44,14 +47,19 @@ bool WebGPUCapturer::EndFrameCapture(DeviceOwnedWindow devWnd)
       WebGPUInitParams initParams;
       SERIALISE_ELEMENT(initParams);
     }
-  }
 
-  // TODO(elie): Clear this fake progress
-  RenderDoc::Inst().SetProgress(CaptureProgress::SerialiseFrameContents, 0.0);
-  Sleep(1000);
-  RenderDoc::Inst().SetProgress(CaptureProgress::SerialiseFrameContents, 0.5);
-  Sleep(1000);
-  RenderDoc::Inst().SetProgress(CaptureProgress::SerialiseFrameContents, 1.0);
+    size_t tot = m_Chunks.size();
+    size_t done = 0;
+
+    for(Chunk *chunk : m_Chunks)
+    {
+      chunk->Write(ser);
+
+      ++done;
+      RenderDoc::Inst().SetProgress(CaptureProgress::SerialiseFrameContents,
+                                    (float)done / (float)tot);
+    }
+  }
 
   RenderDoc::Inst().FinishCaptureWriting(rdc, frameNumber);
 
@@ -63,6 +71,11 @@ bool WebGPUCapturer::DiscardFrameCapture(DeviceOwnedWindow devWnd)
   const uint32_t frameNumber = 0;
   RenderDoc::Inst().FinishCaptureWriting(NULL, frameNumber);
   return true;
+}
+
+void WebGPUCapturer::AddChunk(Chunk *chunk)
+{
+  m_Chunks.push_back(chunk);
 }
 
 template <typename SerialiserType>

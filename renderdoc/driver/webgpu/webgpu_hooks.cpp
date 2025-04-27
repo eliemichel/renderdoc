@@ -26,6 +26,7 @@ public:
     hooks.InstanceRelease.Register("webgpu_dawn.dll", "wgpuInstanceRelease", wgpuInstanceRelease_hook);
 
     RenderDoc::Inst().AddDeviceFrameCapturer(&webgpuHooks, &webgpuHooks.capturer);
+    MessageBeep(MB_OK);
   }
 
 private:
@@ -59,9 +60,19 @@ private:
   // Hook destinations
   static WGPUInstance wgpuCreateInstance_hook(WGPUInstanceDescriptor const *descriptor) {
     RDCDEBUG("Intercepted 'wgpuCreateInstance'!");
+    MessageBeep(MB_OK);
 
     // Start the capture
     RenderDoc::Inst().StartFrameCapture(DeviceOwnedWindow(&webgpuHooks, NULL));
+
+    {
+      WriteSerialiser &ser = webgpuHooks.capturer.GetScratchSerialiser();
+      SCOPED_SERIALISE_CHUNK(WebGPUChunk::Foo, sizeof(WebGPUInitParams));
+      WebGPUInitParams initParams;
+      SERIALISE_ELEMENT(initParams);
+      // TODO(elie): Add actual info about the call
+      webgpuHooks.capturer.AddChunk(scope.Get());
+    }
 
     return webgpuHooks.procs.wgpuCreateInstance(descriptor);
   }

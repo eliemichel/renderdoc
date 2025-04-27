@@ -33,6 +33,7 @@ RDResult WebGPU_CreateReplayDevice(RDCFile *rdc, const ReplayOptions &opts, IRep
   RDCLOG("Creating an WebGPU replay device");
   if(rdc)
   {
+    // TODO(elie): Move all this into WebGPUDevice class
     int sectionIdx = rdc->SectionIndex(SectionType::FrameCapture);
 
     if(sectionIdx < 0)
@@ -53,23 +54,78 @@ RDResult WebGPU_CreateReplayDevice(RDCFile *rdc, const ReplayOptions &opts, IRep
 
     ser.SetVersion(version);
 
-    SystemChunk chunk = ser.ReadChunk<SystemChunk>();
-
-    if(chunk != SystemChunk::DriverInit)
-    {
-      RETURN_ERROR_RESULT(ResultCode::FileCorrupted,
-                          "Expected to get a DriverInit chunk, instead got %u", chunk);
-    }
-
     WebGPUInitParams initParams;
-    SERIALISE_ELEMENT(initParams);
+    {
+      SystemChunk chunk = ser.ReadChunk<SystemChunk>();
+
+      if(chunk != SystemChunk::DriverInit)
+      {
+        RETURN_ERROR_RESULT(ResultCode::FileCorrupted,
+                            "Expected to get a DriverInit chunk, instead got %u", chunk);
+      }
+      
+      SERIALISE_ELEMENT(initParams);
+
+      ser.EndChunk();
+    }
 
     if(ser.IsErrored())
     {
       return ser.GetError();
     }
 
-    *driver = new WebGPUDriver(initParams);
+    auto wgpuDriver = new WebGPUDriver(initParams);
+    *driver = wgpuDriver;
+
+    FrameRecord &frameRecord = wgpuDriver->WriteFrameRecord();
+    // TODO(elie): actually populate frameRecord
+
+    // TODO(elie): Create ReadLogInitialisation()
+    for (;;)
+    {
+      if(reader->IsErrored() || reader->AtEnd())
+        break;
+
+      WebGPUChunk context = ser.ReadChunk<WebGPUChunk>();
+
+      // TODO(elie): Create ProcessChunk()
+      if(context == WebGPUChunk::Foo)
+      {
+        // TODO(elie): Mock behavior
+        uint32_t actionId =
+            frameRecord.actionList.empty() ? 0 : frameRecord.actionList.back().actionId + 1;
+        uint32_t firstEventId =
+            frameRecord.actionList.empty() ? 0 : frameRecord.actionList.back().eventId + 1;
+        ActionDescription action;
+        action.customName = "wgpuFoo";
+        action.actionId = actionId;
+        action.flags = ActionFlags::SetMarker;
+        {
+          APIEvent evt;
+          evt.eventId = firstEventId + 0;
+          evt.chunkIndex = APIEvent::NoChunk;
+          action.events.push_back(evt);
+        }
+        {
+          APIEvent evt;
+          evt.eventId = firstEventId + 1;
+          evt.chunkIndex = APIEvent::NoChunk;
+          action.events.push_back(evt);
+
+          action.eventId = action.events.back().eventId;
+        }
+        frameRecord.actionList.push_back(action);
+      }
+
+      ser.EndChunk();
+
+      uint64_t offsetEnd = reader->GetOffset();
+      RenderDoc::Inst().SetProgress(LoadProgress::FileInitialRead,
+                                    float(offsetEnd) / float(reader->GetSize()));
+
+      if((SystemChunk)context == SystemChunk::CaptureScope || reader->IsErrored() || reader->AtEnd())
+        break;
+    }
   }
   else
   {
@@ -261,11 +317,6 @@ rdcarray<DescriptorLogicalLocation> WebGPUDriver::GetDescriptorLocations(
     ResourceId descriptorStore, const rdcarray<DescriptorRange> &ranges)
 {
   return {};
-}
-
-FrameRecord WebGPUDriver::GetFrameRecord()
-{
-  return m_FrameRecord;
 }
 
 RDResult WebGPUDriver::ReadLogInitialisation(RDCFile *rdc, bool storeStructuredBuffers)

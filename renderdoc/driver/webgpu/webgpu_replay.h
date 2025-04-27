@@ -68,7 +68,8 @@ public:
   rdcarray<DescriptorLogicalLocation> GetDescriptorLocations(ResourceId descriptorStore,
                                                              const rdcarray<DescriptorRange> &ranges);
 
-  FrameRecord GetFrameRecord();
+  FrameRecord &WriteFrameRecord() { return m_FrameRecord; }
+  FrameRecord GetFrameRecord() { return m_FrameRecord; }
 
   RDResult ReadLogInitialisation(RDCFile *rdc, bool storeStructuredBuffers);
   void ReplayLog(uint32_t endEventID, ReplayLogType replayType);
