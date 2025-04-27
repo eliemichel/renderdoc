@@ -26,10 +26,12 @@
 
 #include "replay/replay_driver.h"
 
+struct WebGPUInitParams;
+
 class WebGPUDriver : public IReplayDriver
 {
 public:
-  WebGPUDriver();
+  WebGPUDriver(const WebGPUInitParams& initParams);
 
   void Shutdown();
 

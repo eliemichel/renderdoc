@@ -23,17 +23,64 @@
  ******************************************************************************/
 
 #include "webgpu_replay.h"
+#include "webgpu_capture.h"
+
+#include "serialise/rdcfile.h"
+#include "serialise/serialiser.h"
 
 RDResult WebGPU_CreateReplayDevice(RDCFile *rdc, const ReplayOptions &opts, IReplayDriver **driver)
 {
   RDCLOG("Creating an WebGPU replay device");
-  *driver = new WebGPUDriver();
+  if(rdc)
+  {
+    int sectionIdx = rdc->SectionIndex(SectionType::FrameCapture);
+
+    if(sectionIdx < 0)
+      RETURN_ERROR_RESULT(ResultCode::FileCorrupted, "File does not contain captured API data");
+
+    uint64_t version = rdc->GetSectionProperties(sectionIdx).version;
+    if(version != WebGPUInitParams::CurrentVersion)
+    {
+      RETURN_ERROR_RESULT(ResultCode::APIIncompatibleVersion,
+                          "WebGPU capture is incompatible version %llu, newest supported by this "
+                          "build of RenderDoc is %llu",
+                          version, WebGPUInitParams::CurrentVersion);
+    }
+
+    StreamReader *reader = rdc->ReadSection(sectionIdx);
+
+    ReadSerialiser ser(reader, Ownership::Stream);
+
+    ser.SetVersion(version);
+
+    SystemChunk chunk = ser.ReadChunk<SystemChunk>();
+
+    if(chunk != SystemChunk::DriverInit)
+    {
+      RETURN_ERROR_RESULT(ResultCode::FileCorrupted,
+                          "Expected to get a DriverInit chunk, instead got %u", chunk);
+    }
+
+    WebGPUInitParams initParams;
+    SERIALISE_ELEMENT(initParams);
+
+    if(ser.IsErrored())
+    {
+      return ser.GetError();
+    }
+
+    *driver = new WebGPUDriver(initParams);
+  }
+  else
+  {
+    *driver = new WebGPUDriver({});
+  }
   return ResultCode::Succeeded;
 }
 
 static DriverRegistration WebGPUDriverRegistration(RDCDriver::Custom0, &WebGPU_CreateReplayDevice);
 
-WebGPUDriver::WebGPUDriver()
+WebGPUDriver::WebGPUDriver(const WebGPUInitParams &initParams)
 {
   {
     ActionDescription action;
@@ -77,6 +124,8 @@ WebGPUDriver::WebGPUDriver()
     }
     m_FrameRecord.actionList.push_back(action);
   }
+
+  m_DriverInfo.vendor = GPUVendor::Software;
 
   m_SDFile = new SDFile();
   m_SDFile->chunks.push_back(new SDChunk(rdcinflexiblestr("wgpuCreateInstance")));

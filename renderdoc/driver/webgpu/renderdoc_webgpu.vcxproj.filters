@@ -11,6 +11,9 @@
     <Filter Include="official">
       <UniqueIdentifier>{08c59537-915f-4a1e-9e6c-82e4051f63d7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Capture">
+      <UniqueIdentifier>{d6ce7037-3f9d-4687-91a1-dfe7e436f79b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="webgpu_replay.cpp">
@@ -19,6 +22,9 @@
     <ClCompile Include="debug_tests.cpp" />
     <ClCompile Include="webgpu_hooks.cpp">
       <Filter>Hooks</Filter>
+    </ClCompile>
+    <ClCompile Include="webgpu_capture.cpp">
+      <Filter>Capture</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -30,6 +36,9 @@
     </ClInclude>
     <ClInclude Include="official\webgpu.h">
       <Filter>official</Filter>
+    </ClInclude>
+    <ClInclude Include="webgpu_capture.h">
+      <Filter>Capture</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
