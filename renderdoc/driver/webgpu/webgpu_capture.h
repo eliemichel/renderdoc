@@ -43,7 +43,7 @@ DECLARE_REFLECTION_STRUCT(WebGPUInitParams);
 
 enum class WebGPUChunk : uint32_t
 {
-  Foo = (uint32_t)SystemChunk::FirstDriverChunk,
-  Bar,
+  CreateInstance = (uint32_t)SystemChunk::FirstDriverChunk,
+  InstanceRelease,
 };
 

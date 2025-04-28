@@ -24,9 +24,12 @@
 
 #include "webgpu_replay.h"
 #include "webgpu_capture.h"
+#include "webgpu_serialiser.h"
 
 #include "serialise/rdcfile.h"
 #include "serialise/serialiser.h"
+
+#include "official/webgpu.h"
 
 RDResult WebGPU_CreateReplayDevice(RDCFile *rdc, const ReplayOptions &opts, IReplayDriver **driver)
 {
@@ -89,15 +92,50 @@ RDResult WebGPU_CreateReplayDevice(RDCFile *rdc, const ReplayOptions &opts, IRep
       WebGPUChunk context = ser.ReadChunk<WebGPUChunk>();
 
       // TODO(elie): Create ProcessChunk()
-      if(context == WebGPUChunk::Foo)
+      if(context == WebGPUChunk::CreateInstance)
       {
+
+        WGPUInstanceDescriptor descriptor = WGPU_INSTANCE_DESCRIPTOR_INIT;
+        WGPUInstanceDescriptor *pDescriptor = &descriptor;
+        SERIALISE_ELEMENT_OPT(pDescriptor);
+
         // TODO(elie): Mock behavior
         uint32_t actionId =
             frameRecord.actionList.empty() ? 0 : frameRecord.actionList.back().actionId + 1;
         uint32_t firstEventId =
             frameRecord.actionList.empty() ? 0 : frameRecord.actionList.back().eventId + 1;
         ActionDescription action;
-        action.customName = "wgpuFoo";
+        action.customName = "wgpuCreateInstance()";
+        action.actionId = actionId;
+        action.flags = ActionFlags::SetMarker;
+        {
+          APIEvent evt;
+          evt.eventId = firstEventId + 0;
+          evt.chunkIndex = APIEvent::NoChunk;
+          action.events.push_back(evt);
+        }
+        {
+          APIEvent evt;
+          evt.eventId = firstEventId + 1;
+          evt.chunkIndex = APIEvent::NoChunk;
+          action.events.push_back(evt);
+
+          action.eventId = action.events.back().eventId;
+        }
+        frameRecord.actionList.push_back(action);
+      }
+      else if(context == WebGPUChunk::InstanceRelease)
+      {
+        size_t instanceId;
+        SERIALISE_ELEMENT(instanceId);
+
+        // TODO(elie): Mock behavior
+        uint32_t actionId =
+            frameRecord.actionList.empty() ? 0 : frameRecord.actionList.back().actionId + 1;
+        uint32_t firstEventId =
+            frameRecord.actionList.empty() ? 0 : frameRecord.actionList.back().eventId + 1;
+        ActionDescription action;
+        action.customName = StringFormat::Fmt("wgpuInstanceRelease(%#010x)", instanceId);
         action.actionId = actionId;
         action.flags = ActionFlags::SetMarker;
         {
@@ -138,51 +176,9 @@ static DriverRegistration WebGPUDriverRegistration(RDCDriver::Custom0, &WebGPU_C
 
 WebGPUDriver::WebGPUDriver(const WebGPUInitParams &initParams)
 {
-  {
-    ActionDescription action;
-    action.customName = "wgpuCreateInstance";
-    action.actionId = 1;
-    action.flags = ActionFlags::SetMarker;
-    {
-      APIEvent evt;
-      evt.eventId = 0;
-      evt.chunkIndex = APIEvent::NoChunk;
-      action.events.push_back(evt);
-    }
-    {
-      APIEvent evt;
-      evt.eventId = 1;
-      evt.chunkIndex = APIEvent::NoChunk;
-      action.events.push_back(evt);
-
-      action.eventId = action.events.back().eventId;
-    }
-    m_FrameRecord.actionList.push_back(action);
-  }
-  {
-    ActionDescription action;
-    action.customName = "wgpuCreateRelease";
-    action.actionId = 2;
-    action.flags = ActionFlags::SetMarker;
-    {
-      APIEvent evt;
-      evt.eventId = 2;
-      evt.chunkIndex = APIEvent::NoChunk;
-      action.events.push_back(evt);
-    }
-    {
-      APIEvent evt;
-      evt.eventId = 3;
-      evt.chunkIndex = APIEvent::NoChunk;
-      action.events.push_back(evt);
-
-      action.eventId = action.events.back().eventId;
-    }
-    m_FrameRecord.actionList.push_back(action);
-  }
-
   m_DriverInfo.vendor = GPUVendor::Software;
 
+  // TODO(elie): This is mock data
   m_SDFile = new SDFile();
   m_SDFile->chunks.push_back(new SDChunk(rdcinflexiblestr("wgpuCreateInstance")));
 }

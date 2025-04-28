@@ -1,5 +1,6 @@
 #include "webgpu_hooks.h"
 #include "webgpu_capture.h"
+#include "webgpu_serialiser.h"
 
 #include "hooks/hooks.h"
 #include "common/common.h"
@@ -67,10 +68,10 @@ private:
 
     {
       WriteSerialiser &ser = webgpuHooks.capturer.GetScratchSerialiser();
-      SCOPED_SERIALISE_CHUNK(WebGPUChunk::Foo, sizeof(WebGPUInitParams));
-      WebGPUInitParams initParams;
-      SERIALISE_ELEMENT(initParams);
-      // TODO(elie): Add actual info about the call
+      ser.SetActionChunk(); // elie: is this useful?
+      SCOPED_SERIALISE_CHUNK(WebGPUChunk::CreateInstance);
+      // TODO(elie): move into Serialize_CreateInstance
+      SERIALISE_ELEMENT_OPT(descriptor);
       webgpuHooks.capturer.AddChunk(scope.Get());
     }
 
@@ -80,6 +81,16 @@ private:
   static void wgpuInstanceRelease_hook(WGPUInstance instance)
   {
     RDCDEBUG("Intercepted 'wgpuReleaseInstance'!");
+
+    {
+      // WIP: This causes issues
+      WriteSerialiser &ser = webgpuHooks.capturer.GetScratchSerialiser();
+      ser.SetActionChunk();
+      SCOPED_SERIALISE_CHUNK(WebGPUChunk::InstanceRelease);
+      size_t instanceId = (size_t)instance;
+      SERIALISE_ELEMENT(instanceId);
+      webgpuHooks.capturer.AddChunk(scope.Get());
+    }
 
     // End the capture
     RenderDoc::Inst().EndFrameCapture(DeviceOwnedWindow(&webgpuHooks, NULL));

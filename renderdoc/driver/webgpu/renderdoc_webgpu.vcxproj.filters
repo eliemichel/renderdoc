@@ -26,6 +26,9 @@
     <ClCompile Include="webgpu_capture.cpp">
       <Filter>Capture</Filter>
     </ClCompile>
+    <ClCompile Include="webgpu_serialiser.cpp">
+      <Filter>Capture</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="webgpu_replay.h">
@@ -38,6 +41,9 @@
       <Filter>official</Filter>
     </ClInclude>
     <ClInclude Include="webgpu_capture.h">
+      <Filter>Capture</Filter>
+    </ClInclude>
+    <ClInclude Include="webgpu_serialiser.h">
       <Filter>Capture</Filter>
     </ClInclude>
   </ItemGroup>
