@@ -34,147 +34,13 @@
 RDResult WebGPU_CreateReplayDevice(RDCFile *rdc, const ReplayOptions &opts, IReplayDriver **driver)
 {
   RDCLOG("Creating an WebGPU replay device");
-  if(rdc)
-  {
-    // TODO(elie): Move all this into WebGPUDevice class
-    int sectionIdx = rdc->SectionIndex(SectionType::FrameCapture);
-
-    if(sectionIdx < 0)
-      RETURN_ERROR_RESULT(ResultCode::FileCorrupted, "File does not contain captured API data");
-
-    uint64_t version = rdc->GetSectionProperties(sectionIdx).version;
-    if(version != WebGPUInitParams::CurrentVersion)
-    {
-      RETURN_ERROR_RESULT(ResultCode::APIIncompatibleVersion,
-                          "WebGPU capture is incompatible version %llu, newest supported by this "
-                          "build of RenderDoc is %llu",
-                          version, WebGPUInitParams::CurrentVersion);
-    }
-
-    StreamReader *reader = rdc->ReadSection(sectionIdx);
-
-    ReadSerialiser ser(reader, Ownership::Stream);
-
-    ser.SetVersion(version);
-
-    WebGPUInitParams initParams;
-    {
-      SystemChunk chunk = ser.ReadChunk<SystemChunk>();
-
-      if(chunk != SystemChunk::DriverInit)
-      {
-        RETURN_ERROR_RESULT(ResultCode::FileCorrupted,
-                            "Expected to get a DriverInit chunk, instead got %u", chunk);
-      }
-      
-      SERIALISE_ELEMENT(initParams);
-
-      ser.EndChunk();
-    }
-
-    if(ser.IsErrored())
-    {
-      return ser.GetError();
-    }
-
-    auto wgpuDriver = new WebGPUDriver(initParams);
-    *driver = wgpuDriver;
-
-    FrameRecord &frameRecord = wgpuDriver->WriteFrameRecord();
-    // TODO(elie): actually populate frameRecord
-
-    // TODO(elie): Create ReadLogInitialisation()
-    for (;;)
-    {
-      if(reader->IsErrored() || reader->AtEnd())
-        break;
-
-      WebGPUChunk context = ser.ReadChunk<WebGPUChunk>();
-
-      // TODO(elie): Create ProcessChunk()
-      if(context == WebGPUChunk::CreateInstance)
-      {
-
-        WGPUInstanceDescriptor descriptor = WGPU_INSTANCE_DESCRIPTOR_INIT;
-        WGPUInstanceDescriptor *pDescriptor = &descriptor;
-        SERIALISE_ELEMENT_OPT(pDescriptor);
-
-        // TODO(elie): Mock behavior
-        uint32_t actionId =
-            frameRecord.actionList.empty() ? 0 : frameRecord.actionList.back().actionId + 1;
-        uint32_t firstEventId =
-            frameRecord.actionList.empty() ? 0 : frameRecord.actionList.back().eventId + 1;
-        ActionDescription action;
-        action.customName = "wgpuCreateInstance()";
-        action.actionId = actionId;
-        action.flags = ActionFlags::SetMarker;
-        {
-          APIEvent evt;
-          evt.eventId = firstEventId + 0;
-          evt.chunkIndex = APIEvent::NoChunk;
-          action.events.push_back(evt);
-        }
-        {
-          APIEvent evt;
-          evt.eventId = firstEventId + 1;
-          evt.chunkIndex = APIEvent::NoChunk;
-          action.events.push_back(evt);
-
-          action.eventId = action.events.back().eventId;
-        }
-        frameRecord.actionList.push_back(action);
-      }
-      else if(context == WebGPUChunk::InstanceRelease)
-      {
-        size_t instanceId;
-        SERIALISE_ELEMENT(instanceId);
-
-        // TODO(elie): Mock behavior
-        uint32_t actionId =
-            frameRecord.actionList.empty() ? 0 : frameRecord.actionList.back().actionId + 1;
-        uint32_t firstEventId =
-            frameRecord.actionList.empty() ? 0 : frameRecord.actionList.back().eventId + 1;
-        ActionDescription action;
-        action.customName = StringFormat::Fmt("wgpuInstanceRelease(%#010x)", instanceId);
-        action.actionId = actionId;
-        action.flags = ActionFlags::SetMarker;
-        {
-          APIEvent evt;
-          evt.eventId = firstEventId + 0;
-          evt.chunkIndex = APIEvent::NoChunk;
-          action.events.push_back(evt);
-        }
-        {
-          APIEvent evt;
-          evt.eventId = firstEventId + 1;
-          evt.chunkIndex = APIEvent::NoChunk;
-          action.events.push_back(evt);
-
-          action.eventId = action.events.back().eventId;
-        }
-        frameRecord.actionList.push_back(action);
-      }
-
-      ser.EndChunk();
-
-      uint64_t offsetEnd = reader->GetOffset();
-      RenderDoc::Inst().SetProgress(LoadProgress::FileInitialRead,
-                                    float(offsetEnd) / float(reader->GetSize()));
-
-      if((SystemChunk)context == SystemChunk::CaptureScope || reader->IsErrored() || reader->AtEnd())
-        break;
-    }
-  }
-  else
-  {
-    *driver = new WebGPUDriver({});
-  }
+  *driver = new WebGPUDriver();
   return ResultCode::Succeeded;
 }
 
 static DriverRegistration WebGPUDriverRegistration(RDCDriver::Custom0, &WebGPU_CreateReplayDevice);
 
-WebGPUDriver::WebGPUDriver(const WebGPUInitParams &initParams)
+WebGPUDriver::WebGPUDriver()
 {
   m_DriverInfo.vendor = GPUVendor::Software;
 
@@ -317,7 +183,155 @@ rdcarray<DescriptorLogicalLocation> WebGPUDriver::GetDescriptorLocations(
 
 RDResult WebGPUDriver::ReadLogInitialisation(RDCFile *rdc, bool storeStructuredBuffers)
 {
+  // TODO(elie)
+  // ser.ConfigureStructuredExport(&GetChunkName, storeStructuredBuffers, m_TimeBase, m_TimeFrequency);
+  // ...
+  // (see other implems of ReadLogInitialisation)
+  // TODO(elie): use storeStructuredBuffers
+
+  int sectionIdx = rdc->SectionIndex(SectionType::FrameCapture);
+
+  if(sectionIdx < 0)
+    RETURN_ERROR_RESULT(ResultCode::FileCorrupted, "File does not contain captured API data");
+
+  uint64_t version = rdc->GetSectionProperties(sectionIdx).version;
+  if(version != WebGPUInitParams::CurrentVersion)
+  {
+    RETURN_ERROR_RESULT(ResultCode::APIIncompatibleVersion,
+                        "WebGPU capture is incompatible version %llu, newest supported by this "
+                        "build of RenderDoc is %llu",
+                        version, WebGPUInitParams::CurrentVersion);
+  }
+
+  StreamReader *reader = rdc->ReadSection(sectionIdx);
+
+  ReadSerialiser ser(reader, Ownership::Stream);
+
+  ser.SetVersion(version);
+
+  // TODO(elie): We don't use initParams
+  WebGPUInitParams initParams;
+  {
+    SystemChunk chunk = ser.ReadChunk<SystemChunk>();
+
+    if(chunk != SystemChunk::DriverInit)
+    {
+      RETURN_ERROR_RESULT(ResultCode::FileCorrupted,
+                          "Expected to get a DriverInit chunk, instead got %u", chunk);
+    }
+
+    SERIALISE_ELEMENT(initParams);
+
+    ser.EndChunk();
+  }
+
+  if(ser.IsErrored())
+  {
+    return ser.GetError();
+  }
+
+  // TODO(elie): actually populate frameRecord
+
+  for(;;)
+  {
+    if(reader->IsErrored() || reader->AtEnd())
+      break;
+
+    WebGPUChunk context = ser.ReadChunk<WebGPUChunk>();
+
+    if(reader->IsErrored())
+      return RDResult(ResultCode::APIDataCorrupted, ser.GetError().message);
+
+    // TODO(elie): Use 'success'
+    bool success = ProcessChunk(ser, context);
+
+    ser.EndChunk();
+
+    if(reader->IsErrored())
+      return RDResult(ResultCode::APIDataCorrupted, ser.GetError().message);
+
+    uint64_t offsetEnd = reader->GetOffset();
+    RenderDoc::Inst().SetProgress(LoadProgress::FileInitialRead,
+                                  float(offsetEnd) / float(reader->GetSize()));
+
+    if((SystemChunk)context == SystemChunk::CaptureScope || reader->IsErrored() || reader->AtEnd())
+      break;
+  }
+
   return ResultCode::Succeeded;
+}
+
+bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
+{
+  switch(context)
+  {
+    case WebGPUChunk::CreateInstance:
+    {
+      WGPUInstanceDescriptor descriptor = WGPU_INSTANCE_DESCRIPTOR_INIT;
+      WGPUInstanceDescriptor *pDescriptor = &descriptor;
+      SERIALISE_ELEMENT_OPT(pDescriptor);
+
+      // TODO(elie): Mock behavior
+      uint32_t actionId =
+          m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().actionId + 1;
+      uint32_t firstEventId =
+          m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().eventId + 1;
+      ActionDescription action;
+      action.customName = "wgpuCreateInstance()";
+      action.actionId = actionId;
+      action.flags = ActionFlags::SetMarker;
+      {
+        APIEvent evt;
+        evt.eventId = firstEventId + 0;
+        evt.chunkIndex = APIEvent::NoChunk;
+        action.events.push_back(evt);
+      }
+      {
+        APIEvent evt;
+        evt.eventId = firstEventId + 1;
+        evt.chunkIndex = APIEvent::NoChunk;
+        action.events.push_back(evt);
+
+        action.eventId = action.events.back().eventId;
+      }
+      m_FrameRecord.actionList.push_back(action);
+      return true;
+    }
+
+    case WebGPUChunk::InstanceRelease:
+    {
+      size_t instanceId;
+      SERIALISE_ELEMENT(instanceId);
+
+      // TODO(elie): Mock behavior
+      uint32_t actionId =
+          m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().actionId + 1;
+      uint32_t firstEventId =
+          m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().eventId + 1;
+      ActionDescription action;
+      action.customName = StringFormat::Fmt("wgpuInstanceRelease(%#010x)", instanceId);
+      action.actionId = actionId;
+      action.flags = ActionFlags::SetMarker;
+      {
+        APIEvent evt;
+        evt.eventId = firstEventId + 0;
+        evt.chunkIndex = APIEvent::NoChunk;
+        action.events.push_back(evt);
+      }
+      {
+        APIEvent evt;
+        evt.eventId = firstEventId + 1;
+        evt.chunkIndex = APIEvent::NoChunk;
+        action.events.push_back(evt);
+
+        action.eventId = action.events.back().eventId;
+      }
+      m_FrameRecord.actionList.push_back(action);
+      return true;
+    }
+
+    default: return false;
+  }
 }
 
 void WebGPUDriver::ReplayLog(uint32_t endEventID, ReplayLogType replayType)

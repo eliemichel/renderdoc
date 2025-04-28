@@ -24,15 +24,19 @@
 
 #pragma once
 
+#include "webgpu_capture.h"
+
 #include "replay/replay_driver.h"
 
+class ReadSerialiser;
 struct WebGPUInitParams;
 
 class WebGPUDriver : public IReplayDriver
 {
 public:
-  WebGPUDriver(const WebGPUInitParams& initParams);
+  WebGPUDriver();
 
+public:    // IRemoteDriver interface
   void Shutdown();
 
   APIProperties GetAPIProperties();
@@ -132,7 +136,7 @@ public:
 
   rdcarray<GPUDevice> GetAvailableGPUs();
 
-  // IReplayDriver
+public:    // IReplayDriver interface
   bool IsRemoteProxy();
 
   RDResult FatalErrorCheck();
@@ -190,6 +194,7 @@ public:
 
 private:
   virtual ~WebGPUDriver();
+  bool ProcessChunk(ReadSerialiser &ser, WebGPUChunk context);
 
   rdcarray<ShaderReflection *> m_Shaders;
   SDFile *m_SDFile = nullptr;
