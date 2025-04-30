@@ -25,6 +25,7 @@
 #include "webgpu_hooks.h"
 #include "webgpu_capture.h"
 #include "generated/webgpu_serialiser.h"
+#include "generated/webgpu_macros.h"
 
 #include "hooks/hooks.h"
 #include "common/common.h"
@@ -46,9 +47,7 @@ public:
     LibraryHooks::RegisterLibraryHook("webgpu_dawn.dll", NULL);
 
     LoadProcs();
-
-    hooks.CreateInstance.Register("webgpu_dawn.dll", "wgpuCreateInstance", wgpuCreateInstance_hook);
-    hooks.InstanceRelease.Register("webgpu_dawn.dll", "wgpuInstanceRelease", wgpuInstanceRelease_hook);
+    SetupHooks();
 
     RenderDoc::Inst().AddDeviceFrameCapturer(&webgpuHooks, &webgpuHooks.capturer);
     MessageBeep(MB_OK);
@@ -61,24 +60,33 @@ private:
 
   struct HookedFunctions
   {
-    HookedFunction<WGPUProcCreateInstance> CreateInstance;
-    HookedFunction<WGPUProcInstanceRelease> InstanceRelease;
+#define DECLARE_HOOK(proc) HookedFunction<WGPUProc##proc> proc;
+    FOREACH_WEBGPU_PROC(DECLARE_HOOK)
   };
   HookedFunctions hooks;
 
   // Original WebGPU proc pointers
   struct Procs
   {
-    WGPUProcCreateInstance wgpuCreateInstance;
-    WGPUProcInstanceRelease wgpuInstanceRelease;
+#define DECLARE_PROC(proc) WGPUProc##proc wgpu##proc;
+    FOREACH_WEBGPU_PROC(DECLARE_PROC)
   };
   Procs procs;
 
+  void SetupHooks()
+  {
+#define REGISTER_HOOK(proc) \
+    hooks.CreateInstance.Register("webgpu_dawn.dll", "wgpu" #proc, wgpu##proc##_hook);
+
+    FOREACH_WEBGPU_PROC(REGISTER_HOOK)
+  }
+
   void LoadProcs() {
     HMODULE hModule = GetModuleHandleA("webgpu_dawn.dll");
-    procs.wgpuCreateInstance = (WGPUProcCreateInstance)GetProcAddress(hModule, "wgpuCreateInstance");
-    procs.wgpuInstanceRelease =
-        (WGPUProcInstanceRelease)GetProcAddress(hModule, "wgpuInstanceRelease");
+#define GET_PROC(proc) \
+    procs.wgpu##proc = (WGPUProc##proc)GetProcAddress(hModule, "wgpu" #proc);
+
+    FOREACH_WEBGPU_PROC(GET_PROC)
   }
 
   private:
@@ -93,7 +101,7 @@ private:
     {
       WriteSerialiser &ser = webgpuHooks.capturer.GetScratchSerialiser();
       ser.SetActionChunk(); // elie: is this useful?
-      SCOPED_SERIALISE_CHUNK(WebGPUChunk::CreateInstance);
+      SCOPED_SERIALISE_CHUNK(WebGPUChunk::ProcCreateInstance);
       // TODO(elie): move into Serialize_CreateInstance
       SERIALISE_ELEMENT_OPT(descriptor);
       webgpuHooks.capturer.AddChunk(scope.Get());
@@ -107,10 +115,9 @@ private:
     RDCDEBUG("Intercepted 'wgpuReleaseInstance'!");
 
     {
-      // WIP: This causes issues
       WriteSerialiser &ser = webgpuHooks.capturer.GetScratchSerialiser();
       ser.SetActionChunk();
-      SCOPED_SERIALISE_CHUNK(WebGPUChunk::InstanceRelease);
+      SCOPED_SERIALISE_CHUNK(WebGPUChunk::ProcCreateInstance);
       size_t instanceId = (size_t)instance;
       SERIALISE_ELEMENT(instanceId);
       webgpuHooks.capturer.AddChunk(scope.Get());
@@ -121,6 +128,9 @@ private:
 
     webgpuHooks.procs.wgpuInstanceRelease(instance);
   }
+
+  // Auto-generated hooks
+  #include "generated/webgpu_hooks.inc.cpp"
 };
 
 WebGPUHook WebGPUHook::webgpuHooks;

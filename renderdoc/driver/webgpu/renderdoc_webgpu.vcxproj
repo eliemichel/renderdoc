@@ -145,6 +145,7 @@
     <ClCompile Include="webgpu_replay.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="generated\webgpu_macros.h" />
     <ClInclude Include="generated\webgpu_serialiser.h" />
     <ClInclude Include="official\webgpu.h" />
     <ClInclude Include="webgpu_capture.h" />

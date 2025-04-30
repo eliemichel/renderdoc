@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include "generated/webgpu_macros.h"
+
 #include "core/core.h"
 #include "serialise/serialiser.h"
 
@@ -67,7 +69,11 @@ DECLARE_REFLECTION_STRUCT(WebGPUInitParams);
 
 enum class WebGPUChunk : uint32_t
 {
-  CreateInstance = (uint32_t)SystemChunk::FirstDriverChunk,
-  InstanceRelease,
+  Init = (uint32_t)SystemChunk::FirstDriverChunk,
+
+  // For each procedure wgpuFoo, we declare a ProcFoo chunk type
+#define DECLARE_PROC_CHUNK(proc) Proc##proc,
+  FOREACH_WEBGPU_PROC(DECLARE_PROC_CHUNK)
+#undef DECLARE_PROC_CHUNK
 };
 

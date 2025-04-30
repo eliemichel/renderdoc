@@ -263,7 +263,7 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
 {
   switch(context)
   {
-    case WebGPUChunk::CreateInstance:
+    case WebGPUChunk::ProcCreateInstance:
     {
       WGPUInstanceDescriptor descriptor = WGPU_INSTANCE_DESCRIPTOR_INIT;
       WGPUInstanceDescriptor *pDescriptor = &descriptor;
@@ -296,7 +296,7 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
       return true;
     }
 
-    case WebGPUChunk::InstanceRelease:
+    case WebGPUChunk::ProcInstanceRelease:
     {
       size_t instanceId;
       SERIALISE_ELEMENT(instanceId);
