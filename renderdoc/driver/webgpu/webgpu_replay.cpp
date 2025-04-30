@@ -24,7 +24,7 @@
 
 #include "webgpu_replay.h"
 #include "webgpu_capture.h"
-#include "webgpu_serialiser.h"
+#include "generated/webgpu_serialiser.h"
 
 #include "serialise/rdcfile.h"
 #include "serialise/serialiser.h"
@@ -229,8 +229,6 @@ RDResult WebGPUDriver::ReadLogInitialisation(RDCFile *rdc, bool storeStructuredB
   {
     return ser.GetError();
   }
-
-  // TODO(elie): actually populate frameRecord
 
   for(;;)
   {

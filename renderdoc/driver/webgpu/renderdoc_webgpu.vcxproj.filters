@@ -14,20 +14,22 @@
     <Filter Include="Capture">
       <UniqueIdentifier>{d6ce7037-3f9d-4687-91a1-dfe7e436f79b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Generated">
+      <UniqueIdentifier>{efbbdb14-4516-4ccc-b598-a3a261b8c86c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="webgpu_replay.cpp">
       <Filter>Replay</Filter>
     </ClCompile>
-    <ClCompile Include="debug_tests.cpp" />
     <ClCompile Include="webgpu_hooks.cpp">
       <Filter>Hooks</Filter>
     </ClCompile>
     <ClCompile Include="webgpu_capture.cpp">
       <Filter>Capture</Filter>
     </ClCompile>
-    <ClCompile Include="webgpu_serialiser.cpp">
-      <Filter>Capture</Filter>
+    <ClCompile Include="generated\webgpu_serialiser.cpp">
+      <Filter>Generated</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -43,8 +45,8 @@
     <ClInclude Include="webgpu_capture.h">
       <Filter>Capture</Filter>
     </ClInclude>
-    <ClInclude Include="webgpu_serialiser.h">
-      <Filter>Capture</Filter>
+    <ClInclude Include="generated\webgpu_serialiser.h">
+      <Filter>Generated</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
