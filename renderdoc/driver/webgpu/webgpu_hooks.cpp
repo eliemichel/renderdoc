@@ -117,7 +117,7 @@ private:
     {
       WriteSerialiser &ser = webgpuHooks.capturer.GetScratchSerialiser();
       ser.SetActionChunk();
-      SCOPED_SERIALISE_CHUNK(WebGPUChunk::ProcCreateInstance);
+      SCOPED_SERIALISE_CHUNK(WebGPUChunk::ProcInstanceRelease);
       size_t instanceId = (size_t)instance;
       SERIALISE_ELEMENT(instanceId);
       webgpuHooks.capturer.AddChunk(scope.Get());

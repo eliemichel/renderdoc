@@ -261,6 +261,32 @@ RDResult WebGPUDriver::ReadLogInitialisation(RDCFile *rdc, bool storeStructuredB
 
 bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
 {
+  auto AddMockAction = [this](rdcstr name) {
+    uint32_t actionId =
+        m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().actionId + 1;
+    uint32_t firstEventId =
+        m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().eventId + 1;
+    ActionDescription action;
+    action.customName = name;
+    action.actionId = actionId;
+    action.flags = ActionFlags::SetMarker;
+    {
+      APIEvent evt;
+      evt.eventId = firstEventId + 0;
+      evt.chunkIndex = APIEvent::NoChunk;
+      action.events.push_back(evt);
+    }
+    {
+      APIEvent evt;
+      evt.eventId = firstEventId + 1;
+      evt.chunkIndex = APIEvent::NoChunk;
+      action.events.push_back(evt);
+
+      action.eventId = action.events.back().eventId;
+    }
+    m_FrameRecord.actionList.push_back(action);
+  };
+
   switch(context)
   {
     case WebGPUChunk::ProcCreateInstance:
@@ -269,30 +295,8 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
       WGPUInstanceDescriptor *pDescriptor = &descriptor;
       SERIALISE_ELEMENT_OPT(pDescriptor);
 
-      // TODO(elie): Mock behavior
-      uint32_t actionId =
-          m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().actionId + 1;
-      uint32_t firstEventId =
-          m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().eventId + 1;
-      ActionDescription action;
-      action.customName = "wgpuCreateInstance()";
-      action.actionId = actionId;
-      action.flags = ActionFlags::SetMarker;
-      {
-        APIEvent evt;
-        evt.eventId = firstEventId + 0;
-        evt.chunkIndex = APIEvent::NoChunk;
-        action.events.push_back(evt);
-      }
-      {
-        APIEvent evt;
-        evt.eventId = firstEventId + 1;
-        evt.chunkIndex = APIEvent::NoChunk;
-        action.events.push_back(evt);
-
-        action.eventId = action.events.back().eventId;
-      }
-      m_FrameRecord.actionList.push_back(action);
+      AddMockAction("wgpuCreateInstance()");
+      
       return true;
     }
 
@@ -301,32 +305,18 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
       size_t instanceId;
       SERIALISE_ELEMENT(instanceId);
 
-      // TODO(elie): Mock behavior
-      uint32_t actionId =
-          m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().actionId + 1;
-      uint32_t firstEventId =
-          m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().eventId + 1;
-      ActionDescription action;
-      action.customName = StringFormat::Fmt("wgpuInstanceRelease(%#010x)", instanceId);
-      action.actionId = actionId;
-      action.flags = ActionFlags::SetMarker;
-      {
-        APIEvent evt;
-        evt.eventId = firstEventId + 0;
-        evt.chunkIndex = APIEvent::NoChunk;
-        action.events.push_back(evt);
-      }
-      {
-        APIEvent evt;
-        evt.eventId = firstEventId + 1;
-        evt.chunkIndex = APIEvent::NoChunk;
-        action.events.push_back(evt);
+      AddMockAction(StringFormat::Fmt("wgpuInstanceRelease(%#010x)", instanceId));
 
-        action.eventId = action.events.back().eventId;
-      }
-      m_FrameRecord.actionList.push_back(action);
       return true;
     }
+
+    #define HANDLE_PROC(proc) \
+      case WebGPUChunk::Proc##proc: \
+      { \
+        AddMockAction("wgpu" #proc); \
+        return true; \
+      }
+    FOREACH_WEBGPU_PROC_WITH_DEFAULT_BEHAVIOR(HANDLE_PROC)
 
     default: return false;
   }
