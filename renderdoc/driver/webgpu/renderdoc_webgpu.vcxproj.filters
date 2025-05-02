@@ -17,6 +17,9 @@
     <Filter Include="Generated">
       <UniqueIdentifier>{efbbdb14-4516-4ccc-b598-a3a261b8c86c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Common">
+      <UniqueIdentifier>{11cc9afc-ae5b-4bc6-bab8-a091b30c9fad}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="webgpu_replay.cpp">
@@ -30,6 +33,9 @@
     </ClCompile>
     <ClCompile Include="generated\webgpu_serialiser.cpp">
       <Filter>Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="webgpu_utils.cpp">
+      <Filter>Common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -50,6 +56,9 @@
     </ClInclude>
     <ClInclude Include="generated\webgpu_macros.h">
       <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="webgpu_utils.h">
+      <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

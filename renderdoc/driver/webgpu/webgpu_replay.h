@@ -25,6 +25,8 @@
 #pragma once
 
 #include "webgpu_capture.h"
+#include "webgpu_utils.h"
+#include "official/webgpu.h"
 
 #include "replay/replay_driver.h"
 
@@ -202,6 +204,9 @@ private:
   void AddAction(const ActionDescription &action);
   void AddWipWarningMessage();
 
+  // Used for replay
+  void EnsureReplayContext();
+
   rdcarray<ShaderReflection *> m_Shaders;
   SDFile *m_SDFile = nullptr;
 
@@ -227,4 +232,17 @@ private:
   rdcarray<APIEvent> m_PendingEvents;
   uint32_t m_NextActionId = 0;
   uint32_t m_NextEventId = 0;
+
+  // Used for replay
+  // This inherits from WebGPUProcs so that we can easily use the WebGPU API
+  struct ReplayContext : WebGPUProcs
+  {
+    WGPUInstance instance;
+    WGPUDevice device;
+    bool ready = false;
+
+    void Init();
+  };
+  ReplayContext m_ReplayContext;
+  StreamReader *m_FrameReader = NULL;
 };

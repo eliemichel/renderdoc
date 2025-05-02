@@ -23,6 +23,7 @@
  ******************************************************************************/
 
 #include "webgpu_hooks.h"
+#include "webgpu_utils.h"
 #include "webgpu_capture.h"
 #include "generated/webgpu_serialiser.h"
 #include "generated/webgpu_macros.h"
@@ -58,7 +59,7 @@ public:
     // TODO(elie): Add cases for other OSes and backends
     LibraryHooks::RegisterLibraryHook("webgpu_dawn.dll", NULL);
 
-    LoadProcs();
+    procs.LoadProcs();
     SetupHooks();
 
     // Register the frame capturer
@@ -78,12 +79,7 @@ private:
 
   // Original WebGPU proc pointers, which we call to issue the original call
   // from within the hooks.
-  struct Procs
-  {
-#define DECLARE_PROC(proc) WGPUProc##proc wgpu##proc;
-    FOREACH_WEBGPU_PROC(DECLARE_PROC)
-  };
-  Procs procs;
+  WebGPUProcs procs;
 
   // HookedFunction are RenderDoc's abstraction to help injecting our hooks in
   // lieu of the original WebGPU procs.
@@ -93,15 +89,6 @@ private:
     FOREACH_WEBGPU_PROC(DECLARE_HOOK)
   };
   HookedFunctions hooks;
-
-  // Load all WebGPU procedures from the same backend as the injected application
-  void LoadProcs()
-  {
-    HMODULE hModule = GetModuleHandleA("webgpu_dawn.dll");
-#define GET_PROC(proc) procs.wgpu##proc = (WGPUProc##proc)GetProcAddress(hModule, "wgpu" #proc);
-
-    FOREACH_WEBGPU_PROC(GET_PROC)
-  }
 
   // Replace raw WebGPU procs by our hooks in the injected application
   void SetupHooks()

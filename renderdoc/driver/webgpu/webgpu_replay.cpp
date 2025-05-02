@@ -24,6 +24,7 @@
 
 #include "webgpu_replay.h"
 #include "webgpu_capture.h"
+#include "webgpu_utils.h"
 #include "generated/webgpu_serialiser.h"
 
 #include "serialise/rdcfile.h"
@@ -144,7 +145,7 @@ rdcarray<rdcstr> WebGPUDriver::GetDisassemblyTargets(bool withPipeline)
 rdcstr WebGPUDriver::DisassembleShader(ResourceId pipeline, const ShaderReflection *refl,
                                       const rdcstr &target)
 {
-  return "; No disassembly available due to unrecoverable error analysing capture.";
+  return "; Shader disassembly is not available in the WebGPU driver.";
 }
 
 rdcarray<EventUsage> WebGPUDriver::GetUsage(ResourceId id)
@@ -155,10 +156,12 @@ rdcarray<EventUsage> WebGPUDriver::GetUsage(ResourceId id)
 void WebGPUDriver::SetPipelineStates(D3D11Pipe::State *d3d11, D3D12Pipe::State *d3d12,
                                     GLPipe::State *gl, VKPipe::State *vk)
 {
+  RDCDEBUG("[WebGPU driver] SetPipelineStates");
 }
 
 void WebGPUDriver::SavePipelineState(uint32_t eventId)
 {
+  RDCDEBUG("[WebGPU driver] SavePipelineState");
 }
 
 rdcarray<Descriptor> WebGPUDriver::GetDescriptors(ResourceId descriptorStore,
@@ -216,9 +219,17 @@ RDResult WebGPUDriver::ReadLogInitialisation(RDCFile *rdc, bool storeStructuredB
                         version, WebGPUInitParams::CurrentVersion);
   }
 
-  StreamReader *reader = rdc->ReadSection(sectionIdx);
+  // We use the same chunks to build structured data and to replay
+  // TODO(elie): Should we change that?
+  StreamReader *sourceReader = rdc->ReadSection(sectionIdx);
+  uint64_t frameDataSize = sourceReader->GetSize() - sourceReader->GetOffset();
+  m_FrameReader = new StreamReader(sourceReader, frameDataSize);
+  SAFE_DELETE(sourceReader);
+  
+  StreamReader *reader = m_FrameReader;
+  reader->SetOffset(0);
 
-  ReadSerialiser ser(reader, Ownership::Stream);
+  ReadSerialiser ser(reader, Ownership::Nothing);
 
   ser.SetVersion(version);
 
@@ -498,10 +509,17 @@ void WebGPUDriver::AddEvent(WebGPUChunk context, rdcstr name)
 
     if(popActionFromStack)
     {
-      auto parent = m_ActionStack.back();
-      m_ActionStack.pop_back();
+      if(m_ActionStack.empty())
+      {
+        // TODO(elie): Log error about mismatch of begin/end sections
+      }
+      else
+      {
+        auto parent = m_ActionStack.back();
+        m_ActionStack.pop_back();
 
-      AddAction(parent);
+        AddAction(parent);
+      }
     }
   }
 }
@@ -532,6 +550,62 @@ void WebGPUDriver::AddWipWarningMessage()
 
 void WebGPUDriver::ReplayLog(uint32_t endEventID, ReplayLogType replayType)
 {
+  RDCDEBUG("[WebGPU driver] ReplayLog, endEventID = ", endEventID, ", replayType = ", replayType);
+
+  StreamReader *reader = m_FrameReader;
+  reader->SetOffset(0);
+
+  ReadSerialiser ser(reader, Ownership::Nothing);
+
+  ser.SetVersion(WebGPUInitParams::CurrentVersion);
+
+  /* SystemChunk chunk = */ser.ReadChunk<SystemChunk>();
+  // TODO(elie): Use init info to init replay context
+  ser.EndChunk();
+
+  EnsureReplayContext();
+
+  for(;;)
+  {
+    if(reader->IsErrored() || reader->AtEnd())
+      break;
+
+    WebGPUChunk context = ser.ReadChunk<WebGPUChunk>();
+
+    // TODO(elie)
+    //ReplayChunk(ser, context, replayType);
+
+    ser.EndChunk();
+
+    // TODO(elie): Break when reaching endEventID
+
+    if((SystemChunk)context == SystemChunk::CaptureScope || reader->IsErrored() || reader->AtEnd())
+      break;
+  }
+}
+
+void WebGPUDriver::EnsureReplayContext()
+{
+  if(!m_ReplayContext.ready)
+  {
+    m_ReplayContext.Init();
+  }
+}
+
+void WebGPUDriver::ReplayContext::Init()
+{
+  // TODO(elie): Check for loading errors
+  LoadProcs();
+
+  instance = wgpuCreateInstance(NULL);
+
+  WGPURequestAdapterOptions opts = WGPU_REQUEST_ADAPTER_OPTIONS_INIT; 
+  WGPUAdapter adapter = requestAdapterSync(instance, &opts);
+
+  WGPUDeviceDescriptor desc = WGPU_DEVICE_DESCRIPTOR_INIT;
+  device = requestDeviceSync(instance, adapter, &desc);
+
+  ready = true;
 }
 
 SDFile *WebGPUDriver::GetStructuredFile()

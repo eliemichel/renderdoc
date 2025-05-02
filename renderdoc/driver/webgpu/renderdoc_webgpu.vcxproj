@@ -143,6 +143,7 @@
     <ClCompile Include="webgpu_capture.cpp" />
     <ClCompile Include="webgpu_hooks.cpp" />
     <ClCompile Include="webgpu_replay.cpp" />
+    <ClCompile Include="webgpu_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="generated\webgpu_macros.h" />
@@ -151,6 +152,7 @@
     <ClInclude Include="webgpu_capture.h" />
     <ClInclude Include="webgpu_hooks.h" />
     <ClInclude Include="webgpu_replay.h" />
+    <ClInclude Include="webgpu_utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
