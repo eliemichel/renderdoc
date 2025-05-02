@@ -230,6 +230,12 @@ RDResult WebGPUDriver::ReadLogInitialisation(RDCFile *rdc, bool storeStructuredB
     return ser.GetError();
   }
 
+  // Reset reading state before starting to process chunks
+  // TODO(elie): If we create a class dedicated to Action tree building, move that to its constructor
+  m_ActionStack.clear();
+  m_NextActionId = 0;
+  m_NextEventId = 0;
+
   for(;;)
   {
     if(reader->IsErrored() || reader->AtEnd())
@@ -261,167 +267,6 @@ RDResult WebGPUDriver::ReadLogInitialisation(RDCFile *rdc, bool storeStructuredB
 
 bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
 {
-  auto AddMockAction = [this](WebGPUChunk context, rdcstr name) {
-    uint32_t actionId =
-        m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().actionId + 1;
-    uint32_t firstEventId =
-        m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().eventId + 1;
-    ActionDescription action;
-    action.customName = name;
-    action.actionId = actionId;
-
-    // TODO(elie): Add ActionFlags::Instanced where needed? Or everywhere?
-    if(context == WebGPUChunk::ProcCommandEncoderBeginComputePass ||
-       context == WebGPUChunk::ProcCommandEncoderBeginRenderPass)
-    {
-      action.flags = ActionFlags::PassBoundary | ActionFlags::BeginPass;
-    }
-    else if(context == WebGPUChunk::ProcCommandEncoderClearBuffer)
-    {
-      action.flags = ActionFlags::Clear; // TODO(elie): Maybe Clear is only for Color/Depth texture clear?
-    }
-    else if(context == WebGPUChunk::ProcCommandEncoderCopyBufferToBuffer ||
-            context == WebGPUChunk::ProcCommandEncoderCopyBufferToTexture ||
-            context == WebGPUChunk::ProcCommandEncoderCopyTextureToBuffer ||
-            context == WebGPUChunk::ProcCommandEncoderCopyTextureToTexture ||
-            context == WebGPUChunk::ProcCommandEncoderWriteBuffer)
-    {
-      action.flags = ActionFlags::Copy;
-    }
-    else if(context == WebGPUChunk::ProcCommandEncoderPushDebugGroup)
-    {
-      action.flags = ActionFlags::PushMarker;
-    }
-    else if(context == WebGPUChunk::ProcCommandEncoderPopDebugGroup)
-    {
-      action.flags = ActionFlags::PopMarker;
-    }
-    else if(context == WebGPUChunk::ProcCommandEncoderResolveQuerySet)
-    {
-      action.flags = ActionFlags::Resolve;
-    }
-    else if(context == WebGPUChunk::ProcComputePassEncoderDispatchWorkgroups)
-    {
-      action.flags = ActionFlags::Dispatch;
-    }
-    else if(context == WebGPUChunk::ProcComputePassEncoderDispatchWorkgroupsIndirect)
-    {
-      action.flags = ActionFlags::Dispatch | ActionFlags::Indirect;
-    }
-    else if(context == WebGPUChunk::ProcComputePassEncoderEnd)
-    {
-      action.flags = ActionFlags::PassBoundary | ActionFlags::EndPass;
-    }
-    else if(context == WebGPUChunk::ProcComputePassEncoderInsertDebugMarker)
-    {
-      action.flags = ActionFlags::SetMarker;
-    }
-    else if(context == WebGPUChunk::ProcComputePassEncoderPushDebugGroup)
-    {
-      action.flags = ActionFlags::PushMarker;
-    }
-    else if(context == WebGPUChunk::ProcComputePassEncoderPopDebugGroup)
-    {
-      action.flags = ActionFlags::PopMarker;
-    }
-    else if(context == WebGPUChunk::ProcDevicePushErrorScope)
-    {
-      action.flags = ActionFlags::PushMarker;
-    }
-    else if(context == WebGPUChunk::ProcDevicePopErrorScope)
-    {
-      action.flags = ActionFlags::PopMarker;
-    }
-    else if(context == WebGPUChunk::ProcQueueCopyExternalTextureForBrowser ||
-            context == WebGPUChunk::ProcQueueCopyTextureForBrowser ||
-            context == WebGPUChunk::ProcQueueWriteBuffer||
-            context == WebGPUChunk::ProcQueueWriteTexture)
-    {
-      action.flags = ActionFlags::Copy;
-    }
-    else if(context == WebGPUChunk::ProcRenderPassEncoderDraw ||
-            context == WebGPUChunk::ProcRenderBundleEncoderDraw)
-    {
-      action.flags = ActionFlags::Drawcall;
-    }
-    else if(context == WebGPUChunk::ProcRenderPassEncoderDrawIndexed ||
-            context == WebGPUChunk::ProcRenderBundleEncoderDrawIndexed)
-    {
-      action.flags = ActionFlags::Drawcall | ActionFlags::Indexed;
-    }
-    else if(context == WebGPUChunk::ProcRenderPassEncoderDrawIndexedIndirect ||
-            context == WebGPUChunk::ProcRenderBundleEncoderDrawIndexedIndirect)
-    {
-      action.flags = ActionFlags::Drawcall | ActionFlags::Indexed | ActionFlags::Indirect;
-    }
-    else if(context == WebGPUChunk::ProcRenderPassEncoderDrawIndirect ||
-            context == WebGPUChunk::ProcRenderBundleEncoderDrawIndirect)
-    {
-      action.flags = ActionFlags::Drawcall | ActionFlags::Indirect;
-    }
-    else if(context == WebGPUChunk::ProcRenderPassEncoderMultiDrawIndexedIndirect)
-    {
-      action.flags = ActionFlags::Drawcall | ActionFlags::MultiAction | ActionFlags::Indexed |
-                     ActionFlags::Indirect;
-    }
-    else if(context == WebGPUChunk::ProcRenderPassEncoderMultiDrawIndirect)
-    {
-      action.flags = ActionFlags::Drawcall | ActionFlags::MultiAction | ActionFlags::Indirect;
-    }
-    else if(context == WebGPUChunk::ProcRenderPassEncoderInsertDebugMarker ||
-            context == WebGPUChunk::ProcRenderBundleEncoderInsertDebugMarker)
-    {
-      action.flags = ActionFlags::SetMarker;
-    }
-    else if(context == WebGPUChunk::ProcRenderPassEncoderPushDebugGroup ||
-            context == WebGPUChunk::ProcRenderBundleEncoderPushDebugGroup)
-    {
-      action.flags = ActionFlags::PushMarker;
-    }
-    else if(context == WebGPUChunk::ProcRenderPassEncoderPopDebugGroup ||
-            context == WebGPUChunk::ProcRenderBundleEncoderPopDebugGroup)
-    {
-      action.flags = ActionFlags::PopMarker;
-    }
-    else if(context == WebGPUChunk::ProcRenderPassEncoderBeginOcclusionQuery)
-    {
-      action.flags = ActionFlags::PassBoundary | ActionFlags::BeginPass;
-    }
-    else if(context == WebGPUChunk::ProcRenderPassEncoderEndOcclusionQuery)
-    {
-      action.flags = ActionFlags::PassBoundary | ActionFlags::EndPass;
-    }
-    else if(context == WebGPUChunk::ProcRenderPassEncoderEnd ||
-            context == WebGPUChunk::ProcRenderBundleEncoderFinish)
-    {
-      action.flags = ActionFlags::PassBoundary | ActionFlags::EndPass;
-    }
-    else if(context == WebGPUChunk::ProcSharedTextureMemoryBeginAccess)
-    {
-      action.flags = ActionFlags::PassBoundary | ActionFlags::BeginPass;
-    }
-    else if(context == WebGPUChunk::ProcSharedTextureMemoryEndAccess)
-    {
-      action.flags = ActionFlags::PassBoundary | ActionFlags::EndPass;
-    }
-    
-    {
-      APIEvent evt;
-      evt.eventId = firstEventId + 0;
-      evt.chunkIndex = APIEvent::NoChunk;
-      action.events.push_back(evt);
-    }
-    {
-      APIEvent evt;
-      evt.eventId = firstEventId + 1;
-      evt.chunkIndex = APIEvent::NoChunk;
-      action.events.push_back(evt);
-
-      action.eventId = action.events.back().eventId;
-    }
-    m_FrameRecord.actionList.push_back(action);
-  };
-
   switch(context)
   {
     case WebGPUChunk::ProcCreateInstance:
@@ -430,7 +275,7 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
       WGPUInstanceDescriptor *pDescriptor = &descriptor;
       SERIALISE_ELEMENT_OPT(pDescriptor);
 
-      AddMockAction(context , "wgpuCreateInstance()");
+      AddAction(context , "wgpuCreateInstance()");
       
       return true;
     }
@@ -440,7 +285,7 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
       size_t instanceId;
       SERIALISE_ELEMENT(instanceId);
 
-      AddMockAction(context, StringFormat::Fmt("wgpuInstanceRelease(%#010x)", instanceId));
+      AddAction(context, StringFormat::Fmt("wgpuInstanceRelease(%#010x)", instanceId));
 
       return true;
     }
@@ -448,13 +293,176 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
     #define HANDLE_PROC(proc) \
       case WebGPUChunk::Proc##proc: \
       { \
-        AddMockAction(context , "wgpu" #proc); \
+        AddAction(context , "wgpu" #proc); \
         return true; \
       }
     FOREACH_WEBGPU_PROC_WITH_DEFAULT_REPLAY_BEHAVIOR(HANDLE_PROC)
 
     default: return false;
   }
+}
+
+void WebGPUDriver::AddAction(WebGPUChunk context, rdcstr name)
+{
+  uint32_t actionId =
+      m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().actionId + 1;
+  uint32_t firstEventId =
+      m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().eventId + 1;
+  ActionDescription action;
+  action.customName = name;
+  action.actionId = actionId;
+
+  // TODO(elie): Add ActionFlags::Instanced where needed? Or everywhere?
+  if(context == WebGPUChunk::ProcCommandEncoderBeginComputePass ||
+     context == WebGPUChunk::ProcCommandEncoderBeginRenderPass)
+  {
+    action.flags = ActionFlags::PassBoundary | ActionFlags::BeginPass;
+  }
+  else if(context == WebGPUChunk::ProcCommandEncoderClearBuffer)
+  {
+    action.flags =
+        ActionFlags::Clear;    // TODO(elie): Maybe Clear is only for Color/Depth texture clear?
+  }
+  else if(context == WebGPUChunk::ProcCommandEncoderCopyBufferToBuffer ||
+          context == WebGPUChunk::ProcCommandEncoderCopyBufferToTexture ||
+          context == WebGPUChunk::ProcCommandEncoderCopyTextureToBuffer ||
+          context == WebGPUChunk::ProcCommandEncoderCopyTextureToTexture ||
+          context == WebGPUChunk::ProcCommandEncoderWriteBuffer)
+  {
+    action.flags = ActionFlags::Copy;
+  }
+  else if(context == WebGPUChunk::ProcCommandEncoderPushDebugGroup)
+  {
+    action.flags = ActionFlags::PushMarker;
+  }
+  else if(context == WebGPUChunk::ProcCommandEncoderPopDebugGroup)
+  {
+    action.flags = ActionFlags::PopMarker;
+  }
+  else if(context == WebGPUChunk::ProcCommandEncoderResolveQuerySet)
+  {
+    action.flags = ActionFlags::Resolve;
+  }
+  else if(context == WebGPUChunk::ProcComputePassEncoderDispatchWorkgroups)
+  {
+    action.flags = ActionFlags::Dispatch;
+  }
+  else if(context == WebGPUChunk::ProcComputePassEncoderDispatchWorkgroupsIndirect)
+  {
+    action.flags = ActionFlags::Dispatch | ActionFlags::Indirect;
+  }
+  else if(context == WebGPUChunk::ProcComputePassEncoderEnd)
+  {
+    action.flags = ActionFlags::PassBoundary | ActionFlags::EndPass;
+  }
+  else if(context == WebGPUChunk::ProcComputePassEncoderInsertDebugMarker)
+  {
+    action.flags = ActionFlags::SetMarker;
+  }
+  else if(context == WebGPUChunk::ProcComputePassEncoderPushDebugGroup)
+  {
+    action.flags = ActionFlags::PushMarker;
+  }
+  else if(context == WebGPUChunk::ProcComputePassEncoderPopDebugGroup)
+  {
+    action.flags = ActionFlags::PopMarker;
+  }
+  else if(context == WebGPUChunk::ProcDevicePushErrorScope)
+  {
+    action.flags = ActionFlags::PushMarker;
+  }
+  else if(context == WebGPUChunk::ProcDevicePopErrorScope)
+  {
+    action.flags = ActionFlags::PopMarker;
+  }
+  else if(context == WebGPUChunk::ProcQueueCopyExternalTextureForBrowser ||
+          context == WebGPUChunk::ProcQueueCopyTextureForBrowser ||
+          context == WebGPUChunk::ProcQueueWriteBuffer ||
+          context == WebGPUChunk::ProcQueueWriteTexture)
+  {
+    action.flags = ActionFlags::Copy;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderDraw ||
+          context == WebGPUChunk::ProcRenderBundleEncoderDraw)
+  {
+    action.flags = ActionFlags::Drawcall;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderDrawIndexed ||
+          context == WebGPUChunk::ProcRenderBundleEncoderDrawIndexed)
+  {
+    action.flags = ActionFlags::Drawcall | ActionFlags::Indexed;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderDrawIndexedIndirect ||
+          context == WebGPUChunk::ProcRenderBundleEncoderDrawIndexedIndirect)
+  {
+    action.flags = ActionFlags::Drawcall | ActionFlags::Indexed | ActionFlags::Indirect;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderDrawIndirect ||
+          context == WebGPUChunk::ProcRenderBundleEncoderDrawIndirect)
+  {
+    action.flags = ActionFlags::Drawcall | ActionFlags::Indirect;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderMultiDrawIndexedIndirect)
+  {
+    action.flags = ActionFlags::Drawcall | ActionFlags::MultiAction | ActionFlags::Indexed |
+                   ActionFlags::Indirect;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderMultiDrawIndirect)
+  {
+    action.flags = ActionFlags::Drawcall | ActionFlags::MultiAction | ActionFlags::Indirect;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderInsertDebugMarker ||
+          context == WebGPUChunk::ProcRenderBundleEncoderInsertDebugMarker)
+  {
+    action.flags = ActionFlags::SetMarker;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderPushDebugGroup ||
+          context == WebGPUChunk::ProcRenderBundleEncoderPushDebugGroup)
+  {
+    action.flags = ActionFlags::PushMarker;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderPopDebugGroup ||
+          context == WebGPUChunk::ProcRenderBundleEncoderPopDebugGroup)
+  {
+    action.flags = ActionFlags::PopMarker;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderBeginOcclusionQuery)
+  {
+    action.flags = ActionFlags::PassBoundary | ActionFlags::BeginPass;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderEndOcclusionQuery)
+  {
+    action.flags = ActionFlags::PassBoundary | ActionFlags::EndPass;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderEnd ||
+          context == WebGPUChunk::ProcRenderBundleEncoderFinish)
+  {
+    action.flags = ActionFlags::PassBoundary | ActionFlags::EndPass;
+  }
+  else if(context == WebGPUChunk::ProcSharedTextureMemoryBeginAccess)
+  {
+    action.flags = ActionFlags::PassBoundary | ActionFlags::BeginPass;
+  }
+  else if(context == WebGPUChunk::ProcSharedTextureMemoryEndAccess)
+  {
+    action.flags = ActionFlags::PassBoundary | ActionFlags::EndPass;
+  }
+
+  {
+    APIEvent evt;
+    evt.eventId = firstEventId + 0;
+    evt.chunkIndex = APIEvent::NoChunk;
+    action.events.push_back(evt);
+  }
+  {
+    APIEvent evt;
+    evt.eventId = firstEventId + 1;
+    evt.chunkIndex = APIEvent::NoChunk;
+    action.events.push_back(evt);
+
+    action.eventId = action.events.back().eventId;
+  }
+  m_FrameRecord.actionList.push_back(action);
 }
 
 void WebGPUDriver::ReplayLog(uint32_t endEventID, ReplayLogType replayType)

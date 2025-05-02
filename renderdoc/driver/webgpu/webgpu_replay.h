@@ -194,7 +194,11 @@ public:    // IReplayDriver interface
 
 private:
   virtual ~WebGPUDriver();
+
+  // Used during RDC reading
+  // TODO(elie): Create a class dedicated to RDC reading?
   bool ProcessChunk(ReadSerialiser &ser, WebGPUChunk context);
+  void AddAction(WebGPUChunk context, rdcstr name);
 
   rdcarray<ShaderReflection *> m_Shaders;
   SDFile *m_SDFile = nullptr;
@@ -213,4 +217,10 @@ private:
   rdcarray<WindowingSystem> m_WindowSystems;
   rdcarray<ShaderEncoding> m_CustomEncodings;
   rdcarray<ShaderSourcePrefix> m_CustomPrefixes;
+
+  // Used during RDC reading
+  // TODO(elie): Create a class dedicated to RDC reading?
+  rdcarray<ActionDescription> m_ActionStack;
+  uint32_t m_NextActionId = 0;
+  uint32_t m_NextEventId = 0;
 };
