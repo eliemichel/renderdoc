@@ -44,9 +44,20 @@ WebGPUDriver::WebGPUDriver()
 {
   m_DriverInfo.vendor = GPUVendor::Software;
 
+  // TODO(elie): Serialize in capture init info
+  m_Props.pipelineType = GraphicsAPI::Vulkan;
+  m_Props.localRenderer = GraphicsAPI::Vulkan;
+  m_Props.vendor = GPUVendor::Unknown;
+
   // TODO(elie): This is mock data
   m_SDFile = new SDFile();
-  m_SDFile->chunks.push_back(new SDChunk(rdcinflexiblestr("wgpuCreateInstance")));
+
+  // TODO(elie): This is mock data
+  ResourceDescription mockResource;
+  mockResource.resourceId = ResourceIDGen::GetNewUniqueID();
+  mockResource.type = ResourceType::Device;
+  mockResource.SetCustomName("Mock Device");
+  m_Resources.push_back(mockResource);
 }
 
 WebGPUDriver::~WebGPUDriver()
@@ -233,8 +244,10 @@ RDResult WebGPUDriver::ReadLogInitialisation(RDCFile *rdc, bool storeStructuredB
   // Reset reading state before starting to process chunks
   // TODO(elie): If we create a class dedicated to Action tree building, move that to its constructor
   m_ActionStack.clear();
+  m_PendingEvents.clear();
   m_NextActionId = 0;
   m_NextEventId = 0;
+  m_SDFile->chunks.clear();
 
   for(;;)
   {
@@ -275,7 +288,7 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
       WGPUInstanceDescriptor *pDescriptor = &descriptor;
       SERIALISE_ELEMENT_OPT(pDescriptor);
 
-      AddAction(context , "wgpuCreateInstance()");
+      AddEvent(context , "wgpuCreateInstance()");
       
       return true;
     }
@@ -285,7 +298,7 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
       size_t instanceId;
       SERIALISE_ELEMENT(instanceId);
 
-      AddAction(context, StringFormat::Fmt("wgpuInstanceRelease(%#010x)", instanceId));
+      AddEvent(context, StringFormat::Fmt("wgpuInstanceRelease(%#010x)", instanceId));
 
       return true;
     }
@@ -293,7 +306,7 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
     #define HANDLE_PROC(proc) \
       case WebGPUChunk::Proc##proc: \
       { \
-        AddAction(context , "wgpu" #proc); \
+        AddEvent(context, "wgpu" #proc); \
         return true; \
       }
     FOREACH_WEBGPU_PROC_WITH_DEFAULT_REPLAY_BEHAVIOR(HANDLE_PROC)
@@ -302,11 +315,10 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
   }
 }
 
-void WebGPUDriver::AddAction(WebGPUChunk context, rdcstr name)
+void WebGPUDriver::AddEvent(WebGPUChunk context, rdcstr name)
 {
   ActionDescription action;
   action.customName = name;
-  action.actionId = m_NextActionId++;
 
   bool pushActionOnStack = false;
   bool popActionFromStack = false;
@@ -448,50 +460,58 @@ void WebGPUDriver::AddAction(WebGPUChunk context, rdcstr name)
   {
     action.flags = ActionFlags::PassBoundary | ActionFlags::EndPass;
   }
-
+  else if(context == WebGPUChunk::ProcSurfacePresent)
   {
-    APIEvent evt;
-    evt.eventId = m_NextEventId++;
-    evt.chunkIndex = APIEvent::NoChunk;
-    action.events.push_back(evt);
-  }
-  {
-    APIEvent evt;
-    evt.eventId = m_NextEventId++;
-    evt.chunkIndex = APIEvent::NoChunk;
-    action.events.push_back(evt);
+    action.flags = ActionFlags::Present;
   }
 
-  action.eventId = action.events.back().eventId;
+  bool isActionEvent = action.flags != ActionFlags::NoFlags;
 
-  auto AppendToActionLog = [this](const ActionDescription& action) {
-    if(m_ActionStack.empty())
+  SDChunk *chunk = new SDChunk(rdcinflexiblestr(name));
+  
+  APIEvent evt;
+  evt.eventId = m_NextEventId++;
+  evt.chunkIndex = m_SDFile->chunks.size();
+  m_SDFile->chunks.push_back(chunk);
+
+  m_PendingEvents.push_back(evt);
+
+  if(isActionEvent)
+  {
+    action.actionId = m_NextActionId++;
+    std::swap(action.events, m_PendingEvents);
+    action.eventId = action.events.back().eventId;
+
+    if(pushActionOnStack)
     {
-      m_FrameRecord.actionList.push_back(action);
+      // Instead of directly logging this action, we put it on hold in the stack
+      // so that next actions are added as children.
+      m_ActionStack.push_back(action);
     }
     else
     {
-      m_ActionStack.back().children.push_back(action);
+      AppendToActionLog(action);
     }
-  };
 
-  if(pushActionOnStack)
+    if(popActionFromStack)
+    {
+      auto parent = m_ActionStack.back();
+      m_ActionStack.pop_back();
+
+      AppendToActionLog(parent);
+    }
+  }
+}
+
+void WebGPUDriver::AppendToActionLog(const ActionDescription &action)
+{
+  if(m_ActionStack.empty())
   {
-    // Instead of directly logging this action, we put it on hold in the stack
-    // so that next actions are added as children.
-    m_ActionStack.push_back(action);
+    m_FrameRecord.actionList.push_back(action);
   }
   else
   {
-    AppendToActionLog(action);
-  }
-
-  if(popActionFromStack)
-  {
-    auto parent = m_ActionStack.back();
-    m_ActionStack.pop_back();
-
-    AppendToActionLog(parent);
+    m_ActionStack.back().children.push_back(action);
   }
 }
 

@@ -198,7 +198,8 @@ private:
   // Used during RDC reading
   // TODO(elie): Create a class dedicated to RDC reading?
   bool ProcessChunk(ReadSerialiser &ser, WebGPUChunk context);
-  void AddAction(WebGPUChunk context, rdcstr name);
+  void AddEvent(WebGPUChunk context, rdcstr name);
+  void AppendToActionLog(const ActionDescription &action);
 
   rdcarray<ShaderReflection *> m_Shaders;
   SDFile *m_SDFile = nullptr;
@@ -221,6 +222,7 @@ private:
   // Used during RDC reading
   // TODO(elie): Create a class dedicated to RDC reading?
   rdcarray<ActionDescription> m_ActionStack;
+  rdcarray<APIEvent> m_PendingEvents;
   uint32_t m_NextActionId = 0;
   uint32_t m_NextEventId = 0;
 };

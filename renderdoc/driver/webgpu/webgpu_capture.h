@@ -57,6 +57,7 @@ private:
 };
 
 // TODO(elie): Make sth useful out of this (used only for testing RDC deserialization for now)
+// TODO(elie): Move to webgpu_serialize.h
 struct WebGPUInitParams
 {
   uint32_t Test = 0;
