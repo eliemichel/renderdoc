@@ -118,8 +118,9 @@ private:
     RenderDoc::Inst().AddActiveDriver(webgpuHooks.capturer.GetFrameCaptureDriver(), false);
 
     // Start the capture
-    if(RenderDoc::Inst().ShouldTriggerCapture(0))
+    if(RenderDoc::Inst().ShouldTriggerCapture(0) || true) // TODO(elie): remove that debug true and fix the queue capture issue
     {
+      MessageBeep(MB_OK);
       RenderDoc::Inst().StartFrameCapture(DeviceOwnedWindow(&webgpuHooks, NULL));
     }
 
@@ -183,7 +184,6 @@ private:
     ++webgpuHooks.currentFrameNumber;
     if(RenderDoc::Inst().ShouldTriggerCapture(webgpuHooks.currentFrameNumber))
     {
-      MessageBeep(MB_OK);
       RenderDoc::Inst().StartFrameCapture(DeviceOwnedWindow(&webgpuHooks, NULL));
     }
 

@@ -120,7 +120,9 @@ TextureDescription WebGPUDriver::GetTexture(ResourceId id)
 
 rdcarray<DebugMessage> WebGPUDriver::GetDebugMessages()
 {
-  return {};
+  rdcarray<DebugMessage> returnedMessages;
+  std::swap(m_PendingDebugMessages, returnedMessages);
+  return returnedMessages;
 }
 
 rdcarray<ShaderEntryPoint> WebGPUDriver::GetShaderEntryPoints(ResourceId shader)
@@ -248,6 +250,7 @@ RDResult WebGPUDriver::ReadLogInitialisation(RDCFile *rdc, bool storeStructuredB
   m_NextActionId = 0;
   m_NextEventId = 0;
   m_SDFile->chunks.clear();
+  AddWipWarningMessage();
 
   for(;;)
   {
@@ -471,7 +474,7 @@ void WebGPUDriver::AddEvent(WebGPUChunk context, rdcstr name)
   
   APIEvent evt;
   evt.eventId = m_NextEventId++;
-  evt.chunkIndex = m_SDFile->chunks.size();
+  evt.chunkIndex = static_cast<uint32_t>(m_SDFile->chunks.size());
   m_SDFile->chunks.push_back(chunk);
 
   m_PendingEvents.push_back(evt);
@@ -490,7 +493,7 @@ void WebGPUDriver::AddEvent(WebGPUChunk context, rdcstr name)
     }
     else
     {
-      AppendToActionLog(action);
+      AddAction(action);
     }
 
     if(popActionFromStack)
@@ -498,12 +501,12 @@ void WebGPUDriver::AddEvent(WebGPUChunk context, rdcstr name)
       auto parent = m_ActionStack.back();
       m_ActionStack.pop_back();
 
-      AppendToActionLog(parent);
+      AddAction(parent);
     }
   }
 }
 
-void WebGPUDriver::AppendToActionLog(const ActionDescription &action)
+void WebGPUDriver::AddAction(const ActionDescription &action)
 {
   if(m_ActionStack.empty())
   {
@@ -513,6 +516,18 @@ void WebGPUDriver::AppendToActionLog(const ActionDescription &action)
   {
     m_ActionStack.back().children.push_back(action);
   }
+}
+
+void WebGPUDriver::AddWipWarningMessage()
+{
+  DebugMessage WipWarningMsg;
+  WipWarningMsg.eventId = 0;
+  WipWarningMsg.category = MessageCategory::Miscellaneous;
+  WipWarningMsg.severity = MessageSeverity::Info;
+  WipWarningMsg.source = MessageSource::RuntimeWarning;
+  WipWarningMsg.messageID = 0;
+  WipWarningMsg.description = "The WebGPU driver for RenderDoc is EXPERIMENTAL! Use with caution.";
+  m_PendingDebugMessages.push_back(WipWarningMsg);
 }
 
 void WebGPUDriver::ReplayLog(uint32_t endEventID, ReplayLogType replayType)

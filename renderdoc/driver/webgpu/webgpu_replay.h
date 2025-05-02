@@ -199,7 +199,8 @@ private:
   // TODO(elie): Create a class dedicated to RDC reading?
   bool ProcessChunk(ReadSerialiser &ser, WebGPUChunk context);
   void AddEvent(WebGPUChunk context, rdcstr name);
-  void AppendToActionLog(const ActionDescription &action);
+  void AddAction(const ActionDescription &action);
+  void AddWipWarningMessage();
 
   rdcarray<ShaderReflection *> m_Shaders;
   SDFile *m_SDFile = nullptr;
@@ -212,6 +213,7 @@ private:
   FrameRecord m_FrameRecord;
   rdcarray<ShaderEncoding> m_TargetEncodings;
   DriverInformation m_DriverInfo;
+  rdcarray<DebugMessage> m_PendingDebugMessages;
 
   bool m_Proxy = false;
   rdcarray<GPUDevice> m_GPUs;
