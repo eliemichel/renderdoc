@@ -31,6 +31,7 @@
 void WebGPUCapturer::StartFrameCapture(DeviceOwnedWindow devWnd)
 {
   RDCLOG("Starting WebGPU capture");
+  m_Chunks.clear();
 }
 
 bool WebGPUCapturer::EndFrameCapture(DeviceOwnedWindow devWnd)
@@ -87,6 +88,8 @@ bool WebGPUCapturer::EndFrameCapture(DeviceOwnedWindow devWnd)
 
   RenderDoc::Inst().FinishCaptureWriting(rdc, frameNumber);
 
+  m_Chunks.clear();
+
   return true;
 }
 
@@ -94,6 +97,9 @@ bool WebGPUCapturer::DiscardFrameCapture(DeviceOwnedWindow devWnd)
 {
   const uint32_t frameNumber = 0;
   RenderDoc::Inst().FinishCaptureWriting(NULL, frameNumber);
+
+  m_Chunks.clear();
+
   return true;
 }
 

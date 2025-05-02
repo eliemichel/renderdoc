@@ -36,6 +36,18 @@
 // TODO(elie): remove that, it's only for debug Bell and Sleep
 #include <windows.h>
 
+/**
+ * This class is used when injecting into an application to replace the
+ * original WebGPU calls with calls to hooks that wrap the original call
+ * so that we can log detailed information.
+ * 
+ * Some specific hooks are manually written, and the remaining ones are
+ * automatically generated from WebGPU spec.
+ * 
+ * This is a singleton which gets automatically registered (as per
+ * LibraryHook parent behavior) upon which RegisterHooks() is called.
+ * NB: This is called in the injected application's process.
+ */
 class WebGPUHook : LibraryHook
 {
 public:
@@ -49,23 +61,23 @@ public:
     LoadProcs();
     SetupHooks();
 
+    // Register the frame capturer
     RenderDoc::Inst().AddDeviceFrameCapturer(&webgpuHooks, &webgpuHooks.capturer);
-    MessageBeep(MB_OK);
   }
 
 private:
+  // The singleton instance of this class
   static WebGPUHook webgpuHooks;
 
+  // The capturer to log information to when there is an ongoing capture.
   WebGPUCapturer capturer;
 
-  struct HookedFunctions
-  {
-#define DECLARE_HOOK(proc) HookedFunction<WGPUProc##proc> proc;
-    FOREACH_WEBGPU_PROC(DECLARE_HOOK)
-  };
-  HookedFunctions hooks;
+  // The index of the current frame, which we need to determine whether the
+  // user asked to capture it.
+  uint32_t currentFrameNumber = 0;
 
-  // Original WebGPU proc pointers
+  // Original WebGPU proc pointers, which we call to issue the original call
+  // from within the hooks.
   struct Procs
   {
 #define DECLARE_PROC(proc) WGPUProc##proc wgpu##proc;
@@ -73,6 +85,25 @@ private:
   };
   Procs procs;
 
+  // HookedFunction are RenderDoc's abstraction to help injecting our hooks in
+  // lieu of the original WebGPU procs.
+  struct HookedFunctions
+  {
+#define DECLARE_HOOK(proc) HookedFunction<WGPUProc##proc> proc;
+    FOREACH_WEBGPU_PROC(DECLARE_HOOK)
+  };
+  HookedFunctions hooks;
+
+  // Load all WebGPU procedures from the same backend as the injected application
+  void LoadProcs()
+  {
+    HMODULE hModule = GetModuleHandleA("webgpu_dawn.dll");
+#define GET_PROC(proc) procs.wgpu##proc = (WGPUProc##proc)GetProcAddress(hModule, "wgpu" #proc);
+
+    FOREACH_WEBGPU_PROC(GET_PROC)
+  }
+
+  // Replace raw WebGPU procs by our hooks in the injected application
   void SetupHooks()
   {
 #define REGISTER_HOOK(proc) \
@@ -81,23 +112,19 @@ private:
     FOREACH_WEBGPU_PROC(REGISTER_HOOK)
   }
 
-  void LoadProcs() {
-    HMODULE hModule = GetModuleHandleA("webgpu_dawn.dll");
-#define GET_PROC(proc) \
-    procs.wgpu##proc = (WGPUProc##proc)GetProcAddress(hModule, "wgpu" #proc);
-
-    FOREACH_WEBGPU_PROC(GET_PROC)
-  }
-
   private:
   // Hook destinations
   static WGPUInstance wgpuCreateInstance_hook(WGPUInstanceDescriptor const *descriptor) {
-    RDCDEBUG("Intercepted 'wgpuCreateInstance'!");
-    MessageBeep(MB_OK);
+    RenderDoc::Inst().AddActiveDriver(webgpuHooks.capturer.GetFrameCaptureDriver(), false);
 
     // Start the capture
-    RenderDoc::Inst().StartFrameCapture(DeviceOwnedWindow(&webgpuHooks, NULL));
+    if(RenderDoc::Inst().ShouldTriggerCapture(0))
+    {
+      RenderDoc::Inst().StartFrameCapture(DeviceOwnedWindow(&webgpuHooks, NULL));
+    }
 
+    // Regular hook behavior
+    if(RenderDoc::Inst().IsFrameCapturing())
     {
       WriteSerialiser &ser = webgpuHooks.capturer.GetScratchSerialiser();
       ser.SetActionChunk(); // elie: is this useful?
@@ -112,8 +139,8 @@ private:
 
   static void wgpuInstanceRelease_hook(WGPUInstance instance)
   {
-    RDCDEBUG("Intercepted 'wgpuReleaseInstance'!");
-
+    // Regular hook behavior
+    if(RenderDoc::Inst().IsFrameCapturing())
     {
       WriteSerialiser &ser = webgpuHooks.capturer.GetScratchSerialiser();
       ser.SetActionChunk();
@@ -123,10 +150,44 @@ private:
       webgpuHooks.capturer.AddChunk(scope.Get());
     }
 
-    // End the capture
-    RenderDoc::Inst().EndFrameCapture(DeviceOwnedWindow(&webgpuHooks, NULL));
+    // End the capture if it was still running
+    if(RenderDoc::Inst().IsFrameCapturing())
+    {
+      RenderDoc::Inst().EndFrameCapture(DeviceOwnedWindow(&webgpuHooks, NULL));
+    }
 
     webgpuHooks.procs.wgpuInstanceRelease(instance);
+  }
+
+  static void wgpuSurfacePresent_hook(WGPUSurface surface)
+  {
+    // Regular hook behavior
+    if(RenderDoc::Inst().IsFrameCapturing())
+    {
+      WriteSerialiser &ser = webgpuHooks.capturer.GetScratchSerialiser();
+      ser.SetActionChunk();
+      SCOPED_SERIALISE_CHUNK(WebGPUChunk::ProcSurfacePresent);
+      webgpuHooks.capturer.AddChunk(scope.Get());
+    }
+
+    RenderDoc::Inst().Tick();
+    RenderDoc::Inst().AddActiveDriver(webgpuHooks.capturer.GetFrameCaptureDriver(), true);
+
+    // Stop ongoing capture if there was one
+    if(RenderDoc::Inst().IsFrameCapturing())
+    {
+      RenderDoc::Inst().EndFrameCapture(DeviceOwnedWindow(&webgpuHooks, NULL));
+    }
+
+    // Increment frame number and check whether this new frame must be captured
+    ++webgpuHooks.currentFrameNumber;
+    if(RenderDoc::Inst().ShouldTriggerCapture(webgpuHooks.currentFrameNumber))
+    {
+      MessageBeep(MB_OK);
+      RenderDoc::Inst().StartFrameCapture(DeviceOwnedWindow(&webgpuHooks, NULL));
+    }
+
+    webgpuHooks.procs.wgpuSurfacePresent(surface);
   }
 
   // Auto-generated hooks
