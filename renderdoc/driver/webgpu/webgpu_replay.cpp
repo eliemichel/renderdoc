@@ -304,19 +304,19 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
 
 void WebGPUDriver::AddAction(WebGPUChunk context, rdcstr name)
 {
-  uint32_t actionId =
-      m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().actionId + 1;
-  uint32_t firstEventId =
-      m_FrameRecord.actionList.empty() ? 0 : m_FrameRecord.actionList.back().eventId + 1;
   ActionDescription action;
   action.customName = name;
-  action.actionId = actionId;
+  action.actionId = m_NextActionId++;
+
+  bool pushActionOnStack = false;
+  bool popActionFromStack = false;
 
   // TODO(elie): Add ActionFlags::Instanced where needed? Or everywhere?
   if(context == WebGPUChunk::ProcCommandEncoderBeginComputePass ||
      context == WebGPUChunk::ProcCommandEncoderBeginRenderPass)
   {
     action.flags = ActionFlags::PassBoundary | ActionFlags::BeginPass;
+    pushActionOnStack = true;
   }
   else if(context == WebGPUChunk::ProcCommandEncoderClearBuffer)
   {
@@ -438,6 +438,7 @@ void WebGPUDriver::AddAction(WebGPUChunk context, rdcstr name)
           context == WebGPUChunk::ProcRenderBundleEncoderFinish)
   {
     action.flags = ActionFlags::PassBoundary | ActionFlags::EndPass;
+    popActionFromStack = true;
   }
   else if(context == WebGPUChunk::ProcSharedTextureMemoryBeginAccess)
   {
@@ -450,19 +451,48 @@ void WebGPUDriver::AddAction(WebGPUChunk context, rdcstr name)
 
   {
     APIEvent evt;
-    evt.eventId = firstEventId + 0;
+    evt.eventId = m_NextEventId++;
     evt.chunkIndex = APIEvent::NoChunk;
     action.events.push_back(evt);
   }
   {
     APIEvent evt;
-    evt.eventId = firstEventId + 1;
+    evt.eventId = m_NextEventId++;
     evt.chunkIndex = APIEvent::NoChunk;
     action.events.push_back(evt);
-
-    action.eventId = action.events.back().eventId;
   }
-  m_FrameRecord.actionList.push_back(action);
+
+  action.eventId = action.events.back().eventId;
+
+  auto AppendToActionLog = [this](const ActionDescription& action) {
+    if(m_ActionStack.empty())
+    {
+      m_FrameRecord.actionList.push_back(action);
+    }
+    else
+    {
+      m_ActionStack.back().children.push_back(action);
+    }
+  };
+
+  if(pushActionOnStack)
+  {
+    // Instead of directly logging this action, we put it on hold in the stack
+    // so that next actions are added as children.
+    m_ActionStack.push_back(action);
+  }
+  else
+  {
+    AppendToActionLog(action);
+  }
+
+  if(popActionFromStack)
+  {
+    auto parent = m_ActionStack.back();
+    m_ActionStack.pop_back();
+
+    AppendToActionLog(parent);
+  }
 }
 
 void WebGPUDriver::ReplayLog(uint32_t endEventID, ReplayLogType replayType)
