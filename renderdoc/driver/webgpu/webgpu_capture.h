@@ -29,8 +29,24 @@
 #include "core/core.h"
 #include "serialise/serialiser.h"
 
+class WebGPUResourceManager;
+
+/**
+ * The capturer runs in the injected process. As soon as it is injected, it
+ * starts tracking down resources that we may need to capture
+ * (see m_ResourceManager), and when a frame capture ends, it serializes it
+ * into an RDC file.
+ */
 class WebGPUCapturer : public IFrameCapturer
 {
+public:
+  WebGPUCapturer();
+  ~WebGPUCapturer();
+
+  // Disable copy
+  WebGPUCapturer(WebGPUCapturer &) = delete;
+  WebGPUCapturer& operator=(WebGPUCapturer &) = delete;
+
 public:    // IFrameCapturer interface
   RDCDriver GetFrameCaptureDriver() override { return GetDriverType(); }
 
@@ -43,12 +59,17 @@ public:    // IFrameCapturer interface
 public:    // API used by hooks to log events
   void AddChunk(Chunk *chunk);
 
+  // Get a serializer that can be used temporarily to create a chunk
   WriteSerialiser &GetScratchSerialiser() { return m_ScratchSerialiser; }
 
 private:
   static RDCDriver GetDriverType() { return RDCDriver::Custom0; }
+  WebGPUResourceManager *GetResourceManager() { return m_ResourceManager; }
 
 private:
+  // Tracks down resources
+  WebGPUResourceManager *m_ResourceManager;
+
   // We accumulate chunks here each time an API hook is invoked
   rdcarray<Chunk*> m_Chunks;
 
@@ -57,7 +78,6 @@ private:
 };
 
 // TODO(elie): Make sth useful out of this (used only for testing RDC deserialization for now)
-// TODO(elie): Move to webgpu_serialize.h
 struct WebGPUInitParams
 {
   uint32_t Test = 0;

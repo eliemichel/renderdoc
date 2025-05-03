@@ -23,10 +23,23 @@
  ******************************************************************************/
 
 #include "webgpu_capture.h"
+#include "webgpu_manager.h"
 
 #include "serialise/serialiser.h"
 #include "serialise/rdcfile.h"
 #include "serialise/streamio.h"
+
+WebGPUCapturer::WebGPUCapturer()
+{
+  CaptureState state = CaptureState::BackgroundCapturing;
+  m_ResourceManager = new WebGPUResourceManager(state);
+}
+
+WebGPUCapturer::~WebGPUCapturer()
+{
+  m_ResourceManager->Shutdown();
+  SAFE_DELETE(m_ResourceManager);
+}
 
 void WebGPUCapturer::StartFrameCapture(DeviceOwnedWindow devWnd)
 {
@@ -66,12 +79,26 @@ bool WebGPUCapturer::EndFrameCapture(DeviceOwnedWindow devWnd)
   {
     WriteSerialiser ser(captureWriter, Ownership::Stream);
 
+    ser.SetUserData(GetResourceManager());
+
     {
       SCOPED_SERIALISE_CHUNK(SystemChunk::DriverInit, sizeof(WebGPUInitParams));
 
       WebGPUInitParams initParams;
       SERIALISE_ELEMENT(initParams);
     }
+
+    RDCDEBUG("Inserting Resource Serialisers");
+
+    GetResourceManager()->ApplyInitialContentsNonChunks(ser);
+
+    GetResourceManager()->InsertReferencedChunks(ser);
+
+    GetResourceManager()->InsertInitialContentsChunks(ser);
+
+    RDCDEBUG("Creating Capture Scope");
+
+    GetResourceManager()->Serialise_InitialContentsNeeded(ser);
 
     size_t tot = m_Chunks.size();
     size_t done = 0;
@@ -88,6 +115,14 @@ bool WebGPUCapturer::EndFrameCapture(DeviceOwnedWindow devWnd)
 
   RenderDoc::Inst().FinishCaptureWriting(rdc, frameNumber);
 
+  //GetResourceManager()->FreeCaptureData();
+
+  GetResourceManager()->MarkUnwrittenResources();
+
+  GetResourceManager()->ClearReferencedResources();
+
+  GetResourceManager()->FreeInitialContents();
+
   m_Chunks.clear();
 
   return true;
@@ -97,6 +132,14 @@ bool WebGPUCapturer::DiscardFrameCapture(DeviceOwnedWindow devWnd)
 {
   const uint32_t frameNumber = 0;
   RenderDoc::Inst().FinishCaptureWriting(NULL, frameNumber);
+
+  GetResourceManager()->ClearReferencedResources();
+
+  GetResourceManager()->FreeInitialContents();
+
+  //GetResourceManager()->FreeCaptureData();
+
+  GetResourceManager()->MarkUnwrittenResources();
 
   m_Chunks.clear();
 

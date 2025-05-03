@@ -25,6 +25,7 @@
 #include "webgpu_replay.h"
 #include "webgpu_capture.h"
 #include "webgpu_utils.h"
+#include "webgpu_manager.h"
 #include "generated/webgpu_serialiser.h"
 
 #include "serialise/rdcfile.h"
@@ -45,6 +46,10 @@ WebGPUDriver::WebGPUDriver()
 {
   m_DriverInfo.vendor = GPUVendor::Software;
 
+  CaptureState state = CaptureState::LoadingReplaying;
+  m_ResourceManager = new WebGPUResourceManager(state);
+
+
   // TODO(elie): Serialize in capture init info
   m_Props.pipelineType = GraphicsAPI::Vulkan;
   m_Props.localRenderer = GraphicsAPI::Vulkan;
@@ -63,8 +68,10 @@ WebGPUDriver::WebGPUDriver()
 
 WebGPUDriver::~WebGPUDriver()
 {
-  delete m_SDFile;
-  m_SDFile = nullptr;
+  m_ResourceManager->Shutdown();
+  SAFE_DELETE(m_ResourceManager);
+
+  SAFE_DELETE(m_SDFile);
 }
 
 void WebGPUDriver::Shutdown()
@@ -231,10 +238,10 @@ RDResult WebGPUDriver::ReadLogInitialisation(RDCFile *rdc, bool storeStructuredB
 
   ReadSerialiser ser(reader, Ownership::Nothing);
 
+  ser.SetUserData(GetResourceManager());
+
   ser.SetVersion(version);
 
-  // TODO(elie): We don't use initParams
-  WebGPUInitParams initParams;
   {
     SystemChunk chunk = ser.ReadChunk<SystemChunk>();
 
@@ -244,7 +251,7 @@ RDResult WebGPUDriver::ReadLogInitialisation(RDCFile *rdc, bool storeStructuredB
                           "Expected to get a DriverInit chunk, instead got %u", chunk);
     }
 
-    SERIALISE_ELEMENT(initParams);
+    ProcessChunk(ser, (WebGPUChunk)chunk);
 
     ser.EndChunk();
   }
@@ -273,8 +280,12 @@ RDResult WebGPUDriver::ReadLogInitialisation(RDCFile *rdc, bool storeStructuredB
     if(reader->IsErrored())
       return RDResult(ResultCode::APIDataCorrupted, ser.GetError().message);
 
-    // TODO(elie): Use 'success'
     bool success = ProcessChunk(ser, context);
+
+    if(reader->IsErrored())
+      return RDResult(
+          ResultCode::APIDataCorrupted,
+                      StringFormat::Fmt("Failed to process chunk with type %#010x", context));
 
     ser.EndChunk();
 
@@ -294,6 +305,24 @@ RDResult WebGPUDriver::ReadLogInitialisation(RDCFile *rdc, bool storeStructuredB
 
 bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
 {
+  switch((SystemChunk)context)
+  {
+    case SystemChunk::DriverInit:
+    {    // TODO(elie): We don't use initParams
+      WebGPUInitParams initParams;
+      SERIALISE_ELEMENT(initParams);
+      return true;
+    }
+
+    case SystemChunk::InitialContentsList:
+    {
+      GetResourceManager()->CreateInitialContents(ser);
+      return true;
+    }
+
+    default: break;
+  }
+
   switch(context)
   {
     case WebGPUChunk::ProcCreateInstance:

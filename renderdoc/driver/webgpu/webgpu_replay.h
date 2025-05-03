@@ -31,7 +31,7 @@
 #include "replay/replay_driver.h"
 
 class ReadSerialiser;
-struct WebGPUInitParams;
+class WebGPUResourceManager;
 
 class WebGPUDriver : public IReplayDriver
 {
@@ -74,7 +74,7 @@ public:    // IRemoteDriver interface
   rdcarray<DescriptorLogicalLocation> GetDescriptorLocations(ResourceId descriptorStore,
                                                              const rdcarray<DescriptorRange> &ranges);
 
-  FrameRecord &WriteFrameRecord() { return m_FrameRecord; }
+  FrameRecord &WriteFrameRecord() { return m_FrameRecord; } // extra accessor
   FrameRecord GetFrameRecord() { return m_FrameRecord; }
 
   RDResult ReadLogInitialisation(RDCFile *rdc, bool storeStructuredBuffers);
@@ -197,6 +197,8 @@ public:    // IReplayDriver interface
 private:
   virtual ~WebGPUDriver();
 
+  WebGPUResourceManager *GetResourceManager() { return m_ResourceManager; }
+
   // Used during RDC reading
   // TODO(elie): Create a class dedicated to RDC reading?
   bool ProcessChunk(ReadSerialiser &ser, WebGPUChunk context);
@@ -209,6 +211,8 @@ private:
 
   rdcarray<ShaderReflection *> m_Shaders;
   SDFile *m_SDFile = nullptr;
+
+  WebGPUResourceManager *m_ResourceManager;
 
   APIProperties m_Props;
   rdcarray<ResourceDescription> m_Resources;
