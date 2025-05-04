@@ -23,6 +23,7 @@
  ******************************************************************************/
 
 #include "webgpu_capture.h"
+#include "webgpu_serialiser.h"
 #include "webgpu_manager.h"
 
 #include "serialise/serialiser.h"
@@ -146,11 +147,3 @@ void WebGPUCapturer::AddChunk(Chunk *chunk)
 {
   m_Chunks.push_back(chunk);
 }
-
-template <typename SerialiserType>
-void DoSerialise(SerialiserType &ser, WebGPUInitParams &el)
-{
-  SERIALISE_MEMBER(Test);
-}
-
-INSTANTIATE_SERIALISE_TYPE(WebGPUInitParams);

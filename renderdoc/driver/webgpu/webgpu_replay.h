@@ -202,7 +202,7 @@ private:
   // Used during RDC reading
   // TODO(elie): Create a class dedicated to RDC reading?
   bool ProcessChunk(ReadSerialiser &ser, WebGPUChunk context);
-  void AddEvent(WebGPUChunk context, rdcstr name);
+  void AddEvent(WebGPUChunk context, const WebGPUEventInfo& eventInfo, rdcstr name);
   void AddAction(const ActionDescription &action);
   void AddWipWarningMessage();
 
@@ -214,6 +214,7 @@ private:
 
   WebGPUResourceManager *m_ResourceManager;
   std::set<rdcstr> m_Strings;
+  std::map<ResourceId, rdcarray<EventUsage>> m_ResourceUses;
 
   APIProperties m_Props;
   rdcarray<ResourceDescription> m_Resources;

@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 Élie Michel
+ * Copyright (c) 2025 Ã‰lie Michel
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,36 +24,4 @@
 
 #pragma once
 
-#include "generated/webgpu_serialiser_gen.h"
-
-#include "webgpu_capture.h"
-
-#include "core/core.h"
-
-// In this file, we find the serialisation procedure that are manually written
-// (as opposed to "generated/webgpu_serialiser.h")
-
-DECLARE_REFLECTION_STRUCT(WGPUStringView);
-
-DECLARE_REFLECTION_STRUCT(WebGPUInitParams);
-DECLARE_REFLECTION_STRUCT(WebGPUEventInfo);
-
-template <typename SerialiserType, typename DescriptorType>
-void Serialize_WebGPUResource(SerialiserType &ser, const char* resourceTypeName, ResourceDescription& rdDesc, DescriptorType &wgpuDesc)
-{
-  ResourceId resourceId;
-  SERIALISE_ELEMENT(resourceId);
-  SERIALISE_ELEMENT(wgpuDesc);
-
-  rdDesc.resourceId = resourceId;
-  rdDesc.type = ResourceType::Unknown;
-  std::string label = toStdStringView(wgpuDesc.label);
-  if(wgpuDesc.label.data != NULL)
-  {
-    rdDesc.SetCustomName(StringFormat::Fmt("%s '%s'", resourceTypeName, label));
-  }
-  else
-  {
-    rdDesc.SetCustomName(StringFormat::Fmt("%s (Unlabeled)", resourceTypeName));
-  }
-}
+#include "generated/webgpu_macros_gen.h"

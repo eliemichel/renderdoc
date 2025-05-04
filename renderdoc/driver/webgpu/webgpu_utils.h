@@ -24,7 +24,8 @@
 
 #pragma once
 
-#include "generated/webgpu_macros.h"
+#include "webgpu_macros.h"
+#include "webgpu_capture.h"
 
 #include "official/webgpu.h"
 
@@ -63,6 +64,9 @@ uint8_t toRdCompCount(WGPUTextureFormat wgpuFormat);
 uint8_t toRdCompByteWidth(WGPUTextureFormat wgpuFormat);
 ResourceFormat toRdFormat(WGPUTextureFormat wgpuFormat);
 TextureCategory toRdCreationFlags(WGPUTextureUsage wgpuUsage);
+TextureDescription toRdTextureDescription(const WGPUTextureDescriptor &wgpuDesc);
+
+ActionFlags toRdActionFlags(WebGPUChunk context);
 
 /**
  * Original WebGPU proc pointers, which we call to issue the original call

@@ -62,3 +62,19 @@ void DoSerialise(SerialiserType &ser, WGPUStringView &el)
 }
 
 INSTANTIATE_SERIALISE_TYPE(WGPUStringView);
+
+template <typename SerialiserType>
+void DoSerialise(SerialiserType &ser, WebGPUInitParams &el)
+{
+  SERIALISE_MEMBER(Test);
+}
+
+INSTANTIATE_SERIALISE_TYPE(WebGPUInitParams);
+
+template <typename SerialiserType>
+void DoSerialise(SerialiserType &ser, WebGPUEventInfo &el)
+{
+  SERIALISE_MEMBER(Test);
+}
+
+INSTANTIATE_SERIALISE_TYPE(WebGPUEventInfo);

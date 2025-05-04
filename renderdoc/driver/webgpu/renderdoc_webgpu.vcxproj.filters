@@ -72,5 +72,8 @@
     <ClInclude Include="generated\webgpu_serialiser_gen.h">
       <Filter>Generated</Filter>
     </ClInclude>
+    <ClInclude Include="webgpu_macros.h">
+      <Filter>Common</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

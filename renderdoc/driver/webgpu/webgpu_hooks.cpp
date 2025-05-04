@@ -27,7 +27,7 @@
 #include "webgpu_capture.h"
 #include "webgpu_manager.h"
 #include "webgpu_serialiser.h"
-#include "generated/webgpu_macros.h"
+#include "webgpu_macros.h"
 
 #include "hooks/hooks.h"
 #include "common/common.h"
@@ -214,7 +214,7 @@ private:
   }
 
   // Auto-generated hooks
-  #include "generated/webgpu_hooks.inc.cpp"
+  #include "generated/webgpu_hooks_gen.inc.cpp"
 };
 
 WebGPUHook WebGPUHook::webgpuHooks;

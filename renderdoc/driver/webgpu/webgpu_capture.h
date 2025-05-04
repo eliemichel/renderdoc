@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "generated/webgpu_macros.h"
+#include "webgpu_macros.h"
 
 #include "core/core.h"
 #include "serialise/serialiser.h"
@@ -90,7 +90,13 @@ struct WebGPUInitParams
   static const uint64_t CurrentVersion = 0x01;
 };
 
-DECLARE_REFLECTION_STRUCT(WebGPUInitParams);
+/**
+ * Information about any event serialized in a WebGPU capture
+ */
+struct WebGPUEventInfo
+{
+  uint32_t Test = 0;
+};
 
 enum class WebGPUChunk : uint32_t
 {
@@ -101,7 +107,9 @@ enum class WebGPUChunk : uint32_t
   FOREACH_WEBGPU_PROC(DECLARE_PROC_CHUNK)
 #undef DECLARE_PROC_CHUNK
 
-  // Resource chunks
-  ResTexture,
+  // For each resource type WGPUFoo, we declare a ResFoo chunk type
+#define DECLARE_RESOURCE_CHUNK(res) Res##res,
+      FOREACH_WEBGPU_RESOURCE_TYPE(DECLARE_RESOURCE_CHUNK)
+#undef DECLARE_PROC_CHUNK
 };
 

@@ -36,7 +36,8 @@
 
 std::string toStdStringView(WGPUStringView wgpuStringView)
 {
-  return wgpuStringView.length == WGPU_STRLEN
+  return wgpuStringView.data == nullptr ? std::string()
+         : wgpuStringView.length == WGPU_STRLEN
              ? std::string(wgpuStringView.data)
              : std::string(wgpuStringView.data, wgpuStringView.length);
 }
@@ -500,6 +501,172 @@ TextureCategory toRdCreationFlags(WGPUTextureUsage wgpuUsage)
   // TODO(elie): Figure out a way to know if the texture is a surface texture
   // and add TextureCategory::SwapBuffer
   return rdCategory;
+}
+
+TextureDescription toRdTextureDescription(const WGPUTextureDescriptor& wgpuDesc)
+{
+  // NB: Only view can make the distinction between 3D and 2DArray, cubemap, etc
+  TextureDescription desc;
+  desc.format = toRdFormat(wgpuDesc.format);
+  desc.dimension = toRdDimension(wgpuDesc.dimension);
+  desc.type = toRdType(wgpuDesc.dimension);
+  desc.width = wgpuDesc.size.width;
+  desc.height = wgpuDesc.size.height;
+  desc.depth = wgpuDesc.size.depthOrArrayLayers;
+  desc.cubemap = false;
+  desc.mips = wgpuDesc.mipLevelCount;
+  desc.arraysize = 1;
+  desc.creationFlags = toRdCreationFlags(wgpuDesc.usage);
+  desc.msQual = 0;
+  desc.msSamp = wgpuDesc.sampleCount;
+  desc.byteSize = 0;    // TODO(elie)
+  return desc;
+}
+
+ActionFlags toRdActionFlags(WebGPUChunk context)
+{
+  // TODO(elie): Add ActionFlags::Instanced where needed? Or everywhere?
+  if(context == WebGPUChunk::ProcCommandEncoderBeginComputePass ||
+     context == WebGPUChunk::ProcCommandEncoderBeginRenderPass)
+  {
+    return ActionFlags::PassBoundary | ActionFlags::BeginPass;
+  }
+  else if(context == WebGPUChunk::ProcCommandEncoderClearBuffer)
+  {
+    return ActionFlags::Clear;    // TODO(elie): Maybe Clear is only for Color/Depth texture clear?
+  }
+  else if(context == WebGPUChunk::ProcCommandEncoderCopyBufferToBuffer ||
+          context == WebGPUChunk::ProcCommandEncoderCopyBufferToTexture ||
+          context == WebGPUChunk::ProcCommandEncoderCopyTextureToBuffer ||
+          context == WebGPUChunk::ProcCommandEncoderCopyTextureToTexture ||
+          context == WebGPUChunk::ProcCommandEncoderWriteBuffer)
+  {
+    return ActionFlags::Copy;
+  }
+  else if(context == WebGPUChunk::ProcCommandEncoderPushDebugGroup)
+  {
+    return ActionFlags::PushMarker;
+  }
+  else if(context == WebGPUChunk::ProcCommandEncoderPopDebugGroup)
+  {
+    return ActionFlags::PopMarker;
+  }
+  else if(context == WebGPUChunk::ProcCommandEncoderResolveQuerySet)
+  {
+    return ActionFlags::Resolve;
+  }
+  else if(context == WebGPUChunk::ProcComputePassEncoderDispatchWorkgroups)
+  {
+    return ActionFlags::Dispatch;
+  }
+  else if(context == WebGPUChunk::ProcComputePassEncoderDispatchWorkgroupsIndirect)
+  {
+    return ActionFlags::Dispatch | ActionFlags::Indirect;
+  }
+  else if(context == WebGPUChunk::ProcComputePassEncoderEnd)
+  {
+    return ActionFlags::PassBoundary | ActionFlags::EndPass;
+  }
+  else if(context == WebGPUChunk::ProcComputePassEncoderInsertDebugMarker)
+  {
+    return ActionFlags::SetMarker;
+  }
+  else if(context == WebGPUChunk::ProcComputePassEncoderPushDebugGroup)
+  {
+    return ActionFlags::PushMarker;
+  }
+  else if(context == WebGPUChunk::ProcComputePassEncoderPopDebugGroup)
+  {
+    return ActionFlags::PopMarker;
+  }
+  else if(context == WebGPUChunk::ProcDevicePushErrorScope)
+  {
+    return ActionFlags::PushMarker;
+  }
+  else if(context == WebGPUChunk::ProcDevicePopErrorScope)
+  {
+    return ActionFlags::PopMarker;
+  }
+  else if(context == WebGPUChunk::ProcQueueCopyExternalTextureForBrowser ||
+          context == WebGPUChunk::ProcQueueCopyTextureForBrowser ||
+          context == WebGPUChunk::ProcQueueWriteBuffer ||
+          context == WebGPUChunk::ProcQueueWriteTexture)
+  {
+    return ActionFlags::Copy;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderDraw ||
+          context == WebGPUChunk::ProcRenderBundleEncoderDraw)
+  {
+    return ActionFlags::Drawcall;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderDrawIndexed ||
+          context == WebGPUChunk::ProcRenderBundleEncoderDrawIndexed)
+  {
+    return ActionFlags::Drawcall | ActionFlags::Indexed;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderDrawIndexedIndirect ||
+          context == WebGPUChunk::ProcRenderBundleEncoderDrawIndexedIndirect)
+  {
+    return ActionFlags::Drawcall | ActionFlags::Indexed | ActionFlags::Indirect;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderDrawIndirect ||
+          context == WebGPUChunk::ProcRenderBundleEncoderDrawIndirect)
+  {
+    return ActionFlags::Drawcall | ActionFlags::Indirect;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderMultiDrawIndexedIndirect)
+  {
+    return ActionFlags::Drawcall | ActionFlags::MultiAction | ActionFlags::Indexed |
+                   ActionFlags::Indirect;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderMultiDrawIndirect)
+  {
+    return ActionFlags::Drawcall | ActionFlags::MultiAction | ActionFlags::Indirect;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderInsertDebugMarker ||
+          context == WebGPUChunk::ProcRenderBundleEncoderInsertDebugMarker)
+  {
+    return ActionFlags::SetMarker;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderPushDebugGroup ||
+          context == WebGPUChunk::ProcRenderBundleEncoderPushDebugGroup)
+  {
+    return ActionFlags::PushMarker;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderPopDebugGroup ||
+          context == WebGPUChunk::ProcRenderBundleEncoderPopDebugGroup)
+  {
+    return ActionFlags::PopMarker;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderBeginOcclusionQuery)
+  {
+    return ActionFlags::PassBoundary | ActionFlags::BeginPass;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderEndOcclusionQuery)
+  {
+    return ActionFlags::PassBoundary | ActionFlags::EndPass;
+  }
+  else if(context == WebGPUChunk::ProcRenderPassEncoderEnd ||
+          context == WebGPUChunk::ProcRenderBundleEncoderFinish)
+  {
+    return ActionFlags::PassBoundary | ActionFlags::EndPass;
+  }
+  else if(context == WebGPUChunk::ProcSharedTextureMemoryBeginAccess)
+  {
+    return ActionFlags::PassBoundary | ActionFlags::BeginPass;
+  }
+  else if(context == WebGPUChunk::ProcSharedTextureMemoryEndAccess)
+  {
+    return ActionFlags::PassBoundary | ActionFlags::EndPass;
+  }
+  else if(context == WebGPUChunk::ProcSurfacePresent)
+  {
+    return ActionFlags::Present;
+  }
+  else
+  {
+    return ActionFlags::NoFlags;
+  }
 }
 
 void WebGPUProcs::LoadProcs()
