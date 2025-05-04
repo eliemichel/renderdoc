@@ -414,6 +414,7 @@ void WebGPUDriver::AddEvent(WebGPUChunk context, const WebGPUEventInfo& eventInf
   m_SDFile->chunks.push_back(chunk);
 
   // TODO(elie): read eventInfo
+  //m_ResourceUses
 
   m_PendingEvents.push_back(evt);
 

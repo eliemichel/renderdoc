@@ -36,6 +36,7 @@
 DECLARE_REFLECTION_STRUCT(WGPUStringView);
 
 DECLARE_REFLECTION_STRUCT(WebGPUInitParams);
+DECLARE_REFLECTION_STRUCT(WebGPUResourceUsage);
 DECLARE_REFLECTION_STRUCT(WebGPUEventInfo);
 
 template <typename SerialiserType, typename DescriptorType>

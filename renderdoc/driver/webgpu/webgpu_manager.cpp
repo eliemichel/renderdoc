@@ -24,6 +24,8 @@
 
 #include "webgpu_manager.h"
 
+#include <stdexcept>
+
 WebGPUResource* WebGPUResourceRecord::NullResource = NULL;
 
 WebGPUResourceRecord::WebGPUResourceRecord(ResourceId id)
@@ -81,4 +83,14 @@ void WebGPUResourceManager::Create_InitialState(ResourceId id, WrappedResourceTy
 void WebGPUResourceManager::Apply_InitialState(WrappedResourceType live, InitialContentData &initial)
 {
   // TODO(elie)
+}
+
+void WebGPUResourceManager::SetResourceHandle(ResourceId id, void *handle)
+{
+  if(m_HandleToResourceId.find(handle) != m_HandleToResourceId.end())
+  {
+    throw std::runtime_error(
+        StringFormat::Fmt("Handle '%#010x' already has an associated resource!", handle).c_str());
+  }
+  m_HandleToResourceId.insert({handle, id});
 }

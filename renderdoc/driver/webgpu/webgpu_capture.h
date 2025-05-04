@@ -91,11 +91,19 @@ struct WebGPUInitParams
 };
 
 /**
+ */
+struct WebGPUResourceUsage
+{
+  ResourceUsage usage;
+  ResourceId view;
+};
+
+/**
  * Information about any event serialized in a WebGPU capture
  */
 struct WebGPUEventInfo
 {
-  uint32_t Test = 0;
+  rdcarray<WebGPUResourceUsage> resourceUsages;
 };
 
 enum class WebGPUChunk : uint32_t

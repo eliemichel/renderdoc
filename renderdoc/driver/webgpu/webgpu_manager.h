@@ -24,7 +24,12 @@
 
 #pragma once
 
+#include "webgpu_macros.h"
+#include "official/webgpu.h"
+
 #include "core/resource_manager.h"
+
+#include <map>
 
 class WebGPUResourceManager;
 
@@ -65,6 +70,14 @@ class WebGPUResourceManager : public ResourceManager<WebGPUResourceManagerConfig
 public:
   WebGPUResourceManager(CaptureState &state);
 
+#define HANDLE_RESOURCE(ResType) \
+  void SetResourceHandle(ResourceId id, WGPU##ResType handle) \
+  {                                                           \
+    SetResourceHandle(id, (void *)handle);                    \
+  }
+  FOREACH_WEBGPU_RESOURCE_TYPE(HANDLE_RESOURCE)
+#undef HANDLE_RESOURCE
+
 protected: // Implement ResourceManager abstract API
   ResourceId GetID(WrappedResourceType res) override;
 
@@ -78,4 +91,11 @@ protected: // Implement ResourceManager abstract API
                                       const InitialContentData *initialData) override;
   void Create_InitialState(ResourceId id, WrappedResourceType live, bool hasData) override;
   void Apply_InitialState(WrappedResourceType live, InitialContentData &initial) override;
+
+private:
+  void SetResourceHandle(ResourceId id, void *handle);
+
+private:
+  // Map the actual resource handle to RenderDoc's resource ID
+  std::map<void *, ResourceId> m_HandleToResourceId;
 };

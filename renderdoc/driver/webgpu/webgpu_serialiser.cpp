@@ -72,9 +72,18 @@ void DoSerialise(SerialiserType &ser, WebGPUInitParams &el)
 INSTANTIATE_SERIALISE_TYPE(WebGPUInitParams);
 
 template <typename SerialiserType>
+void DoSerialise(SerialiserType &ser, WebGPUResourceUsage &el)
+{
+  SERIALISE_MEMBER(usage);
+  SERIALISE_MEMBER(view);
+}
+
+INSTANTIATE_SERIALISE_TYPE(WebGPUResourceUsage);
+
+template <typename SerialiserType>
 void DoSerialise(SerialiserType &ser, WebGPUEventInfo &el)
 {
-  SERIALISE_MEMBER(Test);
+  SERIALISE_MEMBER(resourceUsages);
 }
 
 INSTANTIATE_SERIALISE_TYPE(WebGPUEventInfo);
