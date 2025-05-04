@@ -62,9 +62,13 @@ public:    // API used by hooks to log events
   // Get a serializer that can be used temporarily to create a chunk
   WriteSerialiser &GetScratchSerialiser() { return m_ScratchSerialiser; }
 
+  WebGPUResourceManager *GetResourceManager() { return m_ResourceManager; }
+
 private:
   static RDCDriver GetDriverType() { return RDCDriver::Custom0; }
-  WebGPUResourceManager *GetResourceManager() { return m_ResourceManager; }
+
+  // Common cleanup behavior shared between EndFrameCapture and DiscardFrameCapture
+  void CleanupAfterFrameCapture();
 
 private:
   // Tracks down resources
@@ -96,5 +100,8 @@ enum class WebGPUChunk : uint32_t
 #define DECLARE_PROC_CHUNK(proc) Proc##proc,
   FOREACH_WEBGPU_PROC(DECLARE_PROC_CHUNK)
 #undef DECLARE_PROC_CHUNK
+
+  // Resource chunks
+  ResTexture,
 };
 

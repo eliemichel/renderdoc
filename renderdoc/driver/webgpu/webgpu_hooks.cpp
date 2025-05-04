@@ -25,6 +25,7 @@
 #include "webgpu_hooks.h"
 #include "webgpu_utils.h"
 #include "webgpu_capture.h"
+#include "webgpu_manager.h"
 #include "generated/webgpu_serialiser.h"
 #include "generated/webgpu_macros.h"
 
@@ -175,6 +176,41 @@ private:
     }
 
     webgpuHooks.procs.wgpuSurfacePresent(surface);
+  }
+
+  static WGPUTexture wgpuDeviceCreateTexture_hook(WGPUDevice device,
+                                                  WGPUTextureDescriptor const *descriptor)
+  {
+    // Regular hook behavior
+    if(RenderDoc::Inst().IsFrameCapturing())
+    {
+      WriteSerialiser &ser = webgpuHooks.capturer.GetScratchSerialiser();
+      ser.SetActionChunk();
+      SCOPED_SERIALISE_CHUNK(WebGPUChunk::ProcDeviceCreateTexture);
+      SERIALISE_ELEMENT(*descriptor);
+      webgpuHooks.capturer.AddChunk(scope.Get());
+    }
+
+    WGPUTexture texture = webgpuHooks.procs.wgpuDeviceCreateTexture(device, descriptor);
+
+    // Register resource
+    ResourceId resourceId = ResourceIDGen::GetNewUniqueID();
+    auto* res = webgpuHooks.capturer.GetResourceManager();
+    auto* record = res->AddResourceRecord(resourceId);
+    {
+      WriteSerialiser &ser = webgpuHooks.capturer.GetScratchSerialiser();
+      SCOPED_SERIALISE_CHUNK(WebGPUChunk::ResTexture);
+      SERIALISE_ELEMENT(resourceId);
+      SERIALISE_ELEMENT(*descriptor);
+      record->AddChunk(scope.Get());
+    }
+
+    if (RenderDoc::Inst().IsFrameCapturing())
+    {
+      res->MarkResourceFrameReferenced(resourceId, eFrameRef_CompleteWrite);
+    }
+
+    return texture;
   }
 
   // Auto-generated hooks

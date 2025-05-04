@@ -346,6 +346,7 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
       return true;
     }
 
+    // Default proc handler
     #define HANDLE_PROC(proc) \
       case WebGPUChunk::Proc##proc: \
       { \
@@ -353,6 +354,43 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
         return true; \
       }
     FOREACH_WEBGPU_PROC_WITH_DEFAULT_REPLAY_BEHAVIOR(HANDLE_PROC)
+
+    // Resource handlers
+    case WebGPUChunk::ResTexture:
+    {
+      ResourceId resourceId;
+      WGPUTextureDescriptor wgpuDesc;
+      SERIALISE_ELEMENT(resourceId);
+      SERIALISE_ELEMENT(wgpuDesc);
+      ResourceDescription res;
+      res.resourceId = resourceId;
+      res.type = ResourceType::Texture;
+      std::string label = toStdStringView(wgpuDesc.label);
+      if(!label.empty())
+      {
+        res.SetCustomName(StringFormat::Fmt("Texture: %s", label));
+      }
+      m_Resources.push_back(res);
+
+      // NB: Only view can make the distinction between 3D and 2DArray, cubemap, etc
+      TextureDescription desc;
+      desc.format = toRdFormat(wgpuDesc.format);
+      desc.dimension = toRdDimension(wgpuDesc.dimension);
+      desc.type = toRdType(wgpuDesc.dimension);
+      desc.width = wgpuDesc.size.width;
+      desc.height = wgpuDesc.size.height;
+      desc.depth = wgpuDesc.size.depthOrArrayLayers;
+      desc.resourceId = resourceId;
+      desc.cubemap = false;
+      desc.mips = wgpuDesc.mipLevelCount;
+      desc.arraysize = 1;
+      desc.creationFlags = toRdCreationFlags(wgpuDesc.usage);
+      desc.msQual = 0;
+      desc.msSamp = wgpuDesc.sampleCount;
+      desc.byteSize = 0; // TODO(elie)
+      m_Textures.push_back(desc);
+      return true;
+    }
 
     default: return false;
   }

@@ -56,6 +56,452 @@ void sleepForMilliseconds(unsigned int milliseconds)
   std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
 }
 
+uint32_t toRdDimension(WGPUTextureDimension wgpuDim)
+{
+  switch(wgpuDim)
+  {
+    case WGPUTextureDimension_1D: return 1;
+    case WGPUTextureDimension_2D: return 2;
+    case WGPUTextureDimension_3D: return 3;
+    default: return 0;    // error
+  }
+}
+
+TextureType toRdType(WGPUTextureDimension wgpuDim)
+{
+  switch(wgpuDim)
+  {
+    case WGPUTextureDimension_1D: return TextureType::Texture1D;
+    case WGPUTextureDimension_2D: return TextureType::Texture2D;
+    case WGPUTextureDimension_3D: return TextureType::Texture3D;
+    default: return TextureType::Unknown;
+  }
+}
+
+ResourceFormatType toRdFormatType(WGPUTextureFormat wgpuFormat)
+{
+  switch(wgpuFormat)
+  {
+    case WGPUTextureFormat_Undefined: return ResourceFormatType::Undefined;
+
+    case WGPUTextureFormat_RGB10A2Uint:
+    case WGPUTextureFormat_RGB10A2Unorm: return ResourceFormatType::R10G10B10A2;
+
+    case WGPUTextureFormat_RG11B10Ufloat: return ResourceFormatType::R11G11B10;
+
+    case WGPUTextureFormat_RGB9E5Ufloat: return ResourceFormatType::R9G9B9E5;
+
+    case WGPUTextureFormat_Stencil8: return ResourceFormatType::S8;
+
+    case WGPUTextureFormat_Depth24PlusStencil8: return ResourceFormatType::D24S8;
+
+    case WGPUTextureFormat_Depth32FloatStencil8: return ResourceFormatType::D32S8;
+
+    case WGPUTextureFormat_BC1RGBAUnorm:
+    case WGPUTextureFormat_BC1RGBAUnormSrgb: return ResourceFormatType::BC1;
+
+    case WGPUTextureFormat_BC2RGBAUnorm:
+    case WGPUTextureFormat_BC2RGBAUnormSrgb: return ResourceFormatType::BC2;
+
+    case WGPUTextureFormat_BC3RGBAUnorm:
+    case WGPUTextureFormat_BC3RGBAUnormSrgb: return ResourceFormatType::BC3;
+
+    case WGPUTextureFormat_BC4RUnorm:
+    case WGPUTextureFormat_BC4RSnorm: return ResourceFormatType::BC4;
+
+    case WGPUTextureFormat_BC5RGUnorm:
+    case WGPUTextureFormat_BC5RGSnorm: return ResourceFormatType::BC5;
+
+    case WGPUTextureFormat_BC6HRGBUfloat:
+    case WGPUTextureFormat_BC6HRGBFloat: return ResourceFormatType::BC6;
+
+    case WGPUTextureFormat_BC7RGBAUnorm:
+    case WGPUTextureFormat_BC7RGBAUnormSrgb: return ResourceFormatType::BC7;
+
+    case WGPUTextureFormat_ETC2RGB8Unorm: 
+    case WGPUTextureFormat_ETC2RGB8UnormSrgb:
+    case WGPUTextureFormat_ETC2RGB8A1Unorm:
+    case WGPUTextureFormat_ETC2RGB8A1UnormSrgb:
+    case WGPUTextureFormat_ETC2RGBA8Unorm:
+    case WGPUTextureFormat_ETC2RGBA8UnormSrgb: return ResourceFormatType::ETC2;
+
+    case WGPUTextureFormat_EACR11Unorm:
+    case WGPUTextureFormat_EACR11Snorm:
+    case WGPUTextureFormat_EACRG11Unorm:
+    case WGPUTextureFormat_EACRG11Snorm: return ResourceFormatType::EAC;
+
+    case WGPUTextureFormat_ASTC4x4Unorm:
+    case WGPUTextureFormat_ASTC4x4UnormSrgb:
+    case WGPUTextureFormat_ASTC5x4Unorm:
+    case WGPUTextureFormat_ASTC5x4UnormSrgb:
+    case WGPUTextureFormat_ASTC5x5Unorm:
+    case WGPUTextureFormat_ASTC5x5UnormSrgb:
+    case WGPUTextureFormat_ASTC6x5Unorm:
+    case WGPUTextureFormat_ASTC6x5UnormSrgb:
+    case WGPUTextureFormat_ASTC6x6Unorm:
+    case WGPUTextureFormat_ASTC6x6UnormSrgb:
+    case WGPUTextureFormat_ASTC8x5Unorm:
+    case WGPUTextureFormat_ASTC8x5UnormSrgb:
+    case WGPUTextureFormat_ASTC8x6Unorm:
+    case WGPUTextureFormat_ASTC8x6UnormSrgb:
+    case WGPUTextureFormat_ASTC8x8Unorm:
+    case WGPUTextureFormat_ASTC8x8UnormSrgb:
+    case WGPUTextureFormat_ASTC10x5Unorm:
+    case WGPUTextureFormat_ASTC10x5UnormSrgb:
+    case WGPUTextureFormat_ASTC10x6Unorm:
+    case WGPUTextureFormat_ASTC10x6UnormSrgb:
+    case WGPUTextureFormat_ASTC10x8Unorm:
+    case WGPUTextureFormat_ASTC10x8UnormSrgb:
+    case WGPUTextureFormat_ASTC10x10Unorm:
+    case WGPUTextureFormat_ASTC10x10UnormSrgb:
+    case WGPUTextureFormat_ASTC12x10Unorm:
+    case WGPUTextureFormat_ASTC12x10UnormSrgb:
+    case WGPUTextureFormat_ASTC12x12Unorm:
+    case WGPUTextureFormat_ASTC12x12UnormSrgb: return ResourceFormatType::ASTC;
+
+    case WGPUTextureFormat_R8BG8Biplanar420Unorm:
+    case WGPUTextureFormat_R8BG8A8Triplanar420Unorm:
+    case WGPUTextureFormat_R8BG8Biplanar422Unorm:
+    case WGPUTextureFormat_R8BG8Biplanar444Unorm: return ResourceFormatType::YUV8;
+
+    case WGPUTextureFormat_R10X6BG10X6Biplanar420Unorm:
+    case WGPUTextureFormat_R10X6BG10X6Biplanar422Unorm:
+    case WGPUTextureFormat_R10X6BG10X6Biplanar444Unorm: return ResourceFormatType::YUV10;
+
+    case WGPUTextureFormat_External: return ResourceFormatType::Undefined;
+    default: return ResourceFormatType::Regular;
+  }
+}
+
+CompType toRdCompType(WGPUTextureFormat wgpuFormat)
+{
+  switch(wgpuFormat)
+  {
+    case WGPUTextureFormat_R16Float:
+    case WGPUTextureFormat_R32Float:
+    case WGPUTextureFormat_RG16Float:
+    case WGPUTextureFormat_RG11B10Ufloat:
+    case WGPUTextureFormat_RGB9E5Ufloat:
+    case WGPUTextureFormat_RG32Float:
+    case WGPUTextureFormat_RGBA16Float:
+    case WGPUTextureFormat_RGBA32Float:
+    case WGPUTextureFormat_BC6HRGBUfloat:
+    case WGPUTextureFormat_BC6HRGBFloat: return CompType::Float;
+
+    case WGPUTextureFormat_R8Unorm:
+    case WGPUTextureFormat_RG8Unorm:
+    case WGPUTextureFormat_RGBA8Unorm:
+    case WGPUTextureFormat_BGRA8Unorm:
+    case WGPUTextureFormat_RGB10A2Unorm:
+    case WGPUTextureFormat_BC1RGBAUnorm:
+    case WGPUTextureFormat_BC2RGBAUnorm:
+    case WGPUTextureFormat_BC3RGBAUnorm:
+    case WGPUTextureFormat_BC4RUnorm:
+    case WGPUTextureFormat_BC5RGUnorm:
+    case WGPUTextureFormat_BC7RGBAUnorm:
+    case WGPUTextureFormat_ETC2RGB8Unorm:
+    case WGPUTextureFormat_ETC2RGB8A1Unorm:
+    case WGPUTextureFormat_ETC2RGBA8Unorm:
+    case WGPUTextureFormat_EACR11Unorm:
+    case WGPUTextureFormat_EACRG11Unorm:
+    case WGPUTextureFormat_ASTC4x4Unorm:
+    case WGPUTextureFormat_ASTC5x4Unorm:
+    case WGPUTextureFormat_ASTC5x5Unorm:
+    case WGPUTextureFormat_ASTC6x5Unorm:
+    case WGPUTextureFormat_ASTC6x6Unorm:
+    case WGPUTextureFormat_ASTC8x5Unorm:
+    case WGPUTextureFormat_ASTC8x6Unorm:
+    case WGPUTextureFormat_ASTC8x8Unorm:
+    case WGPUTextureFormat_ASTC10x5Unorm:
+    case WGPUTextureFormat_ASTC10x6Unorm:
+    case WGPUTextureFormat_ASTC10x8Unorm:
+    case WGPUTextureFormat_ASTC10x10Unorm:
+    case WGPUTextureFormat_ASTC12x10Unorm:
+    case WGPUTextureFormat_ASTC12x12Unorm:
+    case WGPUTextureFormat_R16Unorm:
+    case WGPUTextureFormat_RG16Unorm:
+    case WGPUTextureFormat_RGBA16Unorm:
+    case WGPUTextureFormat_R8BG8Biplanar420Unorm:
+    case WGPUTextureFormat_R10X6BG10X6Biplanar420Unorm:
+    case WGPUTextureFormat_R8BG8A8Triplanar420Unorm:
+    case WGPUTextureFormat_R8BG8Biplanar422Unorm:
+    case WGPUTextureFormat_R8BG8Biplanar444Unorm:
+    case WGPUTextureFormat_R10X6BG10X6Biplanar422Unorm:
+    case WGPUTextureFormat_R10X6BG10X6Biplanar444Unorm: return CompType::UNorm;
+
+    case WGPUTextureFormat_R8Snorm:
+    case WGPUTextureFormat_RG8Snorm:
+    case WGPUTextureFormat_RGBA8Snorm:
+    case WGPUTextureFormat_BC4RSnorm:
+    case WGPUTextureFormat_BC5RGSnorm:
+    case WGPUTextureFormat_EACR11Snorm:
+    case WGPUTextureFormat_EACRG11Snorm:
+    case WGPUTextureFormat_R16Snorm:
+    case WGPUTextureFormat_RG16Snorm:
+    case WGPUTextureFormat_RGBA16Snorm: return CompType::SNorm;
+
+    case WGPUTextureFormat_R8Uint:
+    case WGPUTextureFormat_R16Uint:
+    case WGPUTextureFormat_RG8Uint:
+    case WGPUTextureFormat_R32Uint:
+    case WGPUTextureFormat_RG16Uint:
+    case WGPUTextureFormat_RGBA8Uint:
+    case WGPUTextureFormat_RGB10A2Uint:
+    case WGPUTextureFormat_RG32Uint:
+    case WGPUTextureFormat_RGBA16Uint:
+    case WGPUTextureFormat_RGBA32Uint: return CompType::UInt;
+
+    case WGPUTextureFormat_R8Sint:
+    case WGPUTextureFormat_R16Sint:
+    case WGPUTextureFormat_RG8Sint:
+    case WGPUTextureFormat_R32Sint:
+    case WGPUTextureFormat_RG16Sint:
+    case WGPUTextureFormat_RGBA8Sint:
+    case WGPUTextureFormat_RG32Sint:
+    case WGPUTextureFormat_RGBA16Sint:
+    case WGPUTextureFormat_RGBA32Sint: return CompType::SInt;
+
+    case WGPUTextureFormat_Stencil8:
+    case WGPUTextureFormat_Depth24Plus:
+    case WGPUTextureFormat_Depth24PlusStencil8:
+    case WGPUTextureFormat_Depth32Float:
+    case WGPUTextureFormat_Depth32FloatStencil8:
+    case WGPUTextureFormat_Depth16Unorm: return CompType::Depth;
+
+    case WGPUTextureFormat_RGBA8UnormSrgb:
+    case WGPUTextureFormat_BGRA8UnormSrgb:
+    case WGPUTextureFormat_BC1RGBAUnormSrgb:
+    case WGPUTextureFormat_BC2RGBAUnormSrgb:
+    case WGPUTextureFormat_BC3RGBAUnormSrgb:
+    case WGPUTextureFormat_BC7RGBAUnormSrgb:
+    case WGPUTextureFormat_ETC2RGB8UnormSrgb:
+    case WGPUTextureFormat_ETC2RGB8A1UnormSrgb:
+    case WGPUTextureFormat_ETC2RGBA8UnormSrgb:
+    case WGPUTextureFormat_ASTC4x4UnormSrgb:
+    case WGPUTextureFormat_ASTC5x4UnormSrgb:
+    case WGPUTextureFormat_ASTC5x5UnormSrgb:
+    case WGPUTextureFormat_ASTC6x5UnormSrgb:
+    case WGPUTextureFormat_ASTC6x6UnormSrgb:
+    case WGPUTextureFormat_ASTC8x5UnormSrgb:
+    case WGPUTextureFormat_ASTC8x6UnormSrgb:
+    case WGPUTextureFormat_ASTC8x8UnormSrgb:
+    case WGPUTextureFormat_ASTC10x5UnormSrgb:
+    case WGPUTextureFormat_ASTC10x6UnormSrgb:
+    case WGPUTextureFormat_ASTC10x8UnormSrgb:
+    case WGPUTextureFormat_ASTC10x10UnormSrgb:
+    case WGPUTextureFormat_ASTC12x10UnormSrgb:
+    case WGPUTextureFormat_ASTC12x12UnormSrgb: return CompType::UNormSRGB;
+
+    default: return CompType::Typeless;
+  }
+}
+
+uint8_t toRdCompCount(WGPUTextureFormat wgpuFormat)
+{
+  switch(wgpuFormat)
+  {
+    case WGPUTextureFormat_R8Unorm:
+    case WGPUTextureFormat_R8Snorm:
+    case WGPUTextureFormat_R8Uint:
+    case WGPUTextureFormat_R8Sint:
+    case WGPUTextureFormat_R16Uint:
+    case WGPUTextureFormat_R16Sint:
+    case WGPUTextureFormat_R16Float:
+    case WGPUTextureFormat_R32Float:
+    case WGPUTextureFormat_R32Uint:
+    case WGPUTextureFormat_R32Sint:
+    case WGPUTextureFormat_Stencil8:
+    case WGPUTextureFormat_Depth16Unorm:
+    case WGPUTextureFormat_Depth24Plus:
+    case WGPUTextureFormat_Depth32Float:
+    case WGPUTextureFormat_BC4RUnorm:
+    case WGPUTextureFormat_BC4RSnorm:
+    case WGPUTextureFormat_EACR11Unorm:
+    case WGPUTextureFormat_EACR11Snorm:
+    case WGPUTextureFormat_R16Unorm:
+    case WGPUTextureFormat_R16Snorm: return 1;
+
+    case WGPUTextureFormat_RG8Unorm:
+    case WGPUTextureFormat_RG8Snorm:
+    case WGPUTextureFormat_RG8Uint:
+    case WGPUTextureFormat_RG8Sint:
+    case WGPUTextureFormat_RG16Uint:
+    case WGPUTextureFormat_RG16Sint:
+    case WGPUTextureFormat_RG16Float:
+    case WGPUTextureFormat_RG11B10Ufloat:
+    case WGPUTextureFormat_RG32Float:
+    case WGPUTextureFormat_RG32Uint:
+    case WGPUTextureFormat_RG32Sint:
+    case WGPUTextureFormat_RG16Unorm:
+    case WGPUTextureFormat_RG16Snorm:
+    case WGPUTextureFormat_Depth24PlusStencil8:
+    case WGPUTextureFormat_Depth32FloatStencil8:
+    case WGPUTextureFormat_BC5RGUnorm:
+    case WGPUTextureFormat_BC5RGSnorm:
+    case WGPUTextureFormat_EACRG11Unorm:
+    case WGPUTextureFormat_EACRG11Snorm: return 2;
+
+    case WGPUTextureFormat_BC6HRGBUfloat:
+    case WGPUTextureFormat_BC6HRGBFloat:
+    case WGPUTextureFormat_ETC2RGB8Unorm:
+    case WGPUTextureFormat_ETC2RGB8UnormSrgb:
+    case WGPUTextureFormat_R8BG8Biplanar420Unorm:
+    case WGPUTextureFormat_R10X6BG10X6Biplanar420Unorm:
+    case WGPUTextureFormat_R8BG8A8Triplanar420Unorm:
+    case WGPUTextureFormat_R8BG8Biplanar422Unorm:
+    case WGPUTextureFormat_R8BG8Biplanar444Unorm:
+    case WGPUTextureFormat_R10X6BG10X6Biplanar422Unorm:
+    case WGPUTextureFormat_R10X6BG10X6Biplanar444Unorm: return 3;
+
+    case WGPUTextureFormat_RGBA8Unorm:
+    case WGPUTextureFormat_RGBA8UnormSrgb:
+    case WGPUTextureFormat_RGBA8Snorm:
+    case WGPUTextureFormat_RGBA8Uint:
+    case WGPUTextureFormat_RGBA8Sint:
+    case WGPUTextureFormat_RGBA16Uint:
+    case WGPUTextureFormat_RGBA16Sint:
+    case WGPUTextureFormat_RGBA16Float:
+    case WGPUTextureFormat_RGBA32Float:
+    case WGPUTextureFormat_RGBA32Uint:
+    case WGPUTextureFormat_RGBA32Sint:
+    case WGPUTextureFormat_RGBA16Unorm:
+    case WGPUTextureFormat_RGBA16Snorm:
+    case WGPUTextureFormat_BGRA8Unorm:
+    case WGPUTextureFormat_BGRA8UnormSrgb:
+    case WGPUTextureFormat_RGB10A2Uint:
+    case WGPUTextureFormat_RGB10A2Unorm:
+    case WGPUTextureFormat_RGB9E5Ufloat:
+    case WGPUTextureFormat_BC1RGBAUnorm:
+    case WGPUTextureFormat_BC1RGBAUnormSrgb:
+    case WGPUTextureFormat_BC2RGBAUnorm:
+    case WGPUTextureFormat_BC2RGBAUnormSrgb:
+    case WGPUTextureFormat_BC3RGBAUnorm:
+    case WGPUTextureFormat_BC3RGBAUnormSrgb:
+    case WGPUTextureFormat_BC7RGBAUnorm:
+    case WGPUTextureFormat_BC7RGBAUnormSrgb:
+    case WGPUTextureFormat_ETC2RGB8A1Unorm:
+    case WGPUTextureFormat_ETC2RGB8A1UnormSrgb:
+    case WGPUTextureFormat_ETC2RGBA8Unorm:
+    case WGPUTextureFormat_ETC2RGBA8UnormSrgb:
+    case WGPUTextureFormat_ASTC4x4Unorm:
+    case WGPUTextureFormat_ASTC4x4UnormSrgb:
+    case WGPUTextureFormat_ASTC5x4Unorm:
+    case WGPUTextureFormat_ASTC5x4UnormSrgb:
+    case WGPUTextureFormat_ASTC5x5Unorm:
+    case WGPUTextureFormat_ASTC5x5UnormSrgb:
+    case WGPUTextureFormat_ASTC6x5Unorm:
+    case WGPUTextureFormat_ASTC6x5UnormSrgb:
+    case WGPUTextureFormat_ASTC6x6Unorm:
+    case WGPUTextureFormat_ASTC6x6UnormSrgb:
+    case WGPUTextureFormat_ASTC8x5Unorm:
+    case WGPUTextureFormat_ASTC8x5UnormSrgb:
+    case WGPUTextureFormat_ASTC8x6Unorm:
+    case WGPUTextureFormat_ASTC8x6UnormSrgb:
+    case WGPUTextureFormat_ASTC8x8Unorm:
+    case WGPUTextureFormat_ASTC8x8UnormSrgb:
+    case WGPUTextureFormat_ASTC10x5Unorm:
+    case WGPUTextureFormat_ASTC10x5UnormSrgb:
+    case WGPUTextureFormat_ASTC10x6Unorm:
+    case WGPUTextureFormat_ASTC10x6UnormSrgb:
+    case WGPUTextureFormat_ASTC10x8Unorm:
+    case WGPUTextureFormat_ASTC10x8UnormSrgb:
+    case WGPUTextureFormat_ASTC10x10Unorm:
+    case WGPUTextureFormat_ASTC10x10UnormSrgb:
+    case WGPUTextureFormat_ASTC12x10Unorm:
+    case WGPUTextureFormat_ASTC12x10UnormSrgb:
+    case WGPUTextureFormat_ASTC12x12Unorm:
+    case WGPUTextureFormat_ASTC12x12UnormSrgb: return 4;
+
+    default: return 0;
+  }
+}
+
+uint8_t toRdCompByteWidth(WGPUTextureFormat wgpuFormat)
+{
+  switch(wgpuFormat)
+  {
+    case WGPUTextureFormat_R8Unorm:
+    case WGPUTextureFormat_R8Snorm:
+    case WGPUTextureFormat_R8Uint:
+    case WGPUTextureFormat_R8Sint:
+    case WGPUTextureFormat_RG8Unorm:
+    case WGPUTextureFormat_RG8Snorm:
+    case WGPUTextureFormat_RG8Uint:
+    case WGPUTextureFormat_RG8Sint:
+    case WGPUTextureFormat_RGBA8Unorm:
+    case WGPUTextureFormat_RGBA8UnormSrgb:
+    case WGPUTextureFormat_RGBA8Snorm:
+    case WGPUTextureFormat_RGBA8Uint:
+    case WGPUTextureFormat_RGBA8Sint:
+    case WGPUTextureFormat_BGRA8Unorm:
+    case WGPUTextureFormat_BGRA8UnormSrgb:
+    case WGPUTextureFormat_Stencil8: return 1;
+
+    case WGPUTextureFormat_R16Uint:
+    case WGPUTextureFormat_R16Sint:
+    case WGPUTextureFormat_R16Float:
+    case WGPUTextureFormat_RG16Uint:
+    case WGPUTextureFormat_RG16Sint:
+    case WGPUTextureFormat_RG16Float:
+    case WGPUTextureFormat_RGBA16Uint:
+    case WGPUTextureFormat_RGBA16Sint:
+    case WGPUTextureFormat_RGBA16Float:
+    case WGPUTextureFormat_Depth16Unorm:
+    case WGPUTextureFormat_R16Unorm:
+    case WGPUTextureFormat_RG16Unorm:
+    case WGPUTextureFormat_RGBA16Unorm:
+    case WGPUTextureFormat_R16Snorm:
+    case WGPUTextureFormat_RG16Snorm:
+    case WGPUTextureFormat_RGBA16Snorm: return 2;
+
+    case WGPUTextureFormat_Depth24Plus: return 3;
+
+    case WGPUTextureFormat_R32Float:
+    case WGPUTextureFormat_R32Uint:
+    case WGPUTextureFormat_R32Sint:
+    case WGPUTextureFormat_RG32Float:
+    case WGPUTextureFormat_RG32Uint:
+    case WGPUTextureFormat_RG32Sint:
+    case WGPUTextureFormat_RGBA32Float:
+    case WGPUTextureFormat_RGBA32Uint:
+    case WGPUTextureFormat_RGBA32Sint:
+    case WGPUTextureFormat_Depth24PlusStencil8:
+    case WGPUTextureFormat_Depth32Float: return 4;
+
+    case WGPUTextureFormat_Depth32FloatStencil8: return 5;
+
+    default: return 0;
+  }
+}
+
+ResourceFormat toRdFormat(WGPUTextureFormat wgpuFormat)
+{
+  ResourceFormat rdFormat;
+  rdFormat.type = toRdFormatType(wgpuFormat);
+  rdFormat.compType = toRdCompType(wgpuFormat);
+  rdFormat.compCount = toRdCompCount(wgpuFormat);
+  rdFormat.compByteWidth = toRdCompByteWidth(wgpuFormat);
+  return rdFormat;
+}
+
+TextureCategory toRdCreationFlags(WGPUTextureUsage wgpuUsage)
+{
+  TextureCategory rdCategory = TextureCategory::NoFlags;
+  if(wgpuUsage & WGPUTextureUsage_TextureBinding)
+    rdCategory |= TextureCategory::ShaderRead;
+  if(wgpuUsage & WGPUTextureUsage_RenderAttachment)
+    rdCategory |= TextureCategory::ColorTarget;
+  if(wgpuUsage & WGPUTextureUsage_RenderAttachment)
+    rdCategory |= TextureCategory::DepthTarget;
+  if(wgpuUsage & WGPUTextureUsage_StorageBinding)
+    rdCategory |= TextureCategory::ShaderReadWrite;
+  if(wgpuUsage & WGPUTextureUsage_StorageAttachment)
+    rdCategory |= TextureCategory::ShaderReadWrite;
+  // TODO(elie): Figure out a way to know if the texture is a surface texture
+  // and add TextureCategory::SwapBuffer
+  return rdCategory;
+}
+
 void WebGPUProcs::LoadProcs()
 {
   // Load all WebGPU procedures from the same backend as the injected application  

@@ -44,7 +44,6 @@ WebGPUCapturer::~WebGPUCapturer()
 void WebGPUCapturer::StartFrameCapture(DeviceOwnedWindow devWnd)
 {
   RDCLOG("Starting WebGPU capture");
-  m_Chunks.clear();
 }
 
 bool WebGPUCapturer::EndFrameCapture(DeviceOwnedWindow devWnd)
@@ -115,15 +114,7 @@ bool WebGPUCapturer::EndFrameCapture(DeviceOwnedWindow devWnd)
 
   RenderDoc::Inst().FinishCaptureWriting(rdc, frameNumber);
 
-  //GetResourceManager()->FreeCaptureData();
-
-  GetResourceManager()->MarkUnwrittenResources();
-
-  GetResourceManager()->ClearReferencedResources();
-
-  GetResourceManager()->FreeInitialContents();
-
-  m_Chunks.clear();
+  CleanupAfterFrameCapture();
 
   return true;
 }
@@ -133,17 +124,22 @@ bool WebGPUCapturer::DiscardFrameCapture(DeviceOwnedWindow devWnd)
   const uint32_t frameNumber = 0;
   RenderDoc::Inst().FinishCaptureWriting(NULL, frameNumber);
 
+  CleanupAfterFrameCapture();
+
+  return true;
+}
+
+void WebGPUCapturer::CleanupAfterFrameCapture()
+{
+  // GetResourceManager()->FreeCaptureData();
+
+  GetResourceManager()->MarkUnwrittenResources();
+
   GetResourceManager()->ClearReferencedResources();
 
   GetResourceManager()->FreeInitialContents();
 
-  //GetResourceManager()->FreeCaptureData();
-
-  GetResourceManager()->MarkUnwrittenResources();
-
   m_Chunks.clear();
-
-  return true;
 }
 
 void WebGPUCapturer::AddChunk(Chunk *chunk)

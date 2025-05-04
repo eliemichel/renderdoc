@@ -70,7 +70,7 @@ bool WebGPUResourceManager::Serialise_InitialState(WriteSerialiser &ser, Resourc
                                                    RecordType *record,
                                                    const InitialContentData *initialData)
 {
-  return true;    // TODO(elie)
+  return true;    // TODO(elie) Called from ApplyInitialContentsNonChunks
 }
 
 void WebGPUResourceManager::Create_InitialState(ResourceId id, WrappedResourceType live, bool hasData)

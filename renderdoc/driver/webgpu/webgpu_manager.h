@@ -39,23 +39,10 @@ struct WebGPUResource
 struct WebGPUResourceRecord : public ResourceRecord
 {
   static WebGPUResource* NullResource;
-  /*
-  ResourceId id;
-  bool InternalResource = false;
-  bool DataInSerialiser = false;
-  */
+
+  rdcstr Label;
+
   WebGPUResourceRecord(ResourceId id);
-  /*
-  void AddRef() {}
-  void Release() {}
-
-  void Insert(const std::map<int64_t, Chunk *> &sortedChunks);
-  void MarkDataUnwritten();
-
-  template <typename Configuration>
-  void Delete(ResourceManager<Configuration> *rm)
-  {}
-  */
 };
 
 struct WebGPUInitialContents

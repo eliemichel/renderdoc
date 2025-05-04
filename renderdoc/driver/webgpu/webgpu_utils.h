@@ -28,6 +28,8 @@
 
 #include "official/webgpu.h"
 
+#include "core/core.h"
+
 #include <string>
 
 /**
@@ -52,9 +54,20 @@ WGPUStringView toWgpuStringView(const char* cString);
  */
 void sleepForMilliseconds(unsigned int milliseconds);
 
+// Conversion from WebGPU to RenderDoc texture description
+uint32_t toRdDimension(WGPUTextureDimension wgpuDim);
+TextureType toRdType(WGPUTextureDimension wgpuDim);
+ResourceFormatType toRdFormatType(WGPUTextureFormat wgpuFormat);
+CompType toRdCompType(WGPUTextureFormat wgpuFormat);
+uint8_t toRdCompCount(WGPUTextureFormat wgpuFormat);
+uint8_t toRdCompByteWidth(WGPUTextureFormat wgpuFormat);
+ResourceFormat toRdFormat(WGPUTextureFormat wgpuFormat);
+TextureCategory toRdCreationFlags(WGPUTextureUsage wgpuUsage);
+
 /**
  * Original WebGPU proc pointers, which we call to issue the original call
  * from within the hooks.
+ * TODO(elie): Move to a dedicated file?
  */
 struct WebGPUProcs
 {

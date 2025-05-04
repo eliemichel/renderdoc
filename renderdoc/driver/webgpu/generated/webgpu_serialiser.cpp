@@ -29,6 +29,8 @@
 
 #include "webgpu_serialiser.h"
 
+#include "../webgpu_utils.h"
+
 // Descriptors & Structs
 template <typename SerialiserType>
 void DoSerialise(SerialiserType &ser, WGPUChainedStruct &el)
@@ -805,7 +807,27 @@ INSTANTIATE_SERIALISE_TYPE(WGPUStorageTextureBindingLayout);
 template <typename SerialiserType>
 void DoSerialise(SerialiserType &ser, WGPUStringView &el)
 {
-  SERIALISE_MEMBER(length);
+  rdcstr str;
+  
+  if(ser.IsWriting() && el.data != NULL)
+  {
+    if(el.length == WGPU_STRLEN)
+    {
+      str.assign(el.data);
+    }
+    else
+    {
+      str.assign(el.data, el.length);
+    }
+  }
+
+  SERIALISE_ELEMENT(str);
+
+  if(ser.IsReading())
+  {
+    // TODO(elie): This is WRONG because str gets freed right away. We need some sort of allocator.
+    el = toWgpuStringView(str.c_str());
+  }
 }
 
 INSTANTIATE_SERIALISE_TYPE(WGPUStringView);
