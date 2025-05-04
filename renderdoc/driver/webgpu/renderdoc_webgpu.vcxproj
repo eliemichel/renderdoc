@@ -139,21 +139,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="generated\webgpu_serialiser.cpp" />
+    <ClCompile Include="generated\webgpu_serialiser_gen.cpp" />
     <ClCompile Include="webgpu_capture.cpp" />
     <ClCompile Include="webgpu_hooks.cpp" />
     <ClCompile Include="webgpu_manager.cpp" />
     <ClCompile Include="webgpu_replay.cpp" />
+    <ClCompile Include="webgpu_serialiser.cpp" />
     <ClCompile Include="webgpu_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="generated\webgpu_macros.h" />
-    <ClInclude Include="generated\webgpu_serialiser.h" />
+    <ClInclude Include="generated\webgpu_macros_gen.h" />
+    <ClInclude Include="generated\webgpu_serialiser_gen.h" />
     <ClInclude Include="official\webgpu.h" />
     <ClInclude Include="webgpu_capture.h" />
     <ClInclude Include="webgpu_hooks.h" />
     <ClInclude Include="webgpu_manager.h" />
     <ClInclude Include="webgpu_replay.h" />
+    <ClInclude Include="webgpu_serialiser.h" />
     <ClInclude Include="webgpu_utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

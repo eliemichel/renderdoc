@@ -26,7 +26,7 @@
 #include "webgpu_capture.h"
 #include "webgpu_utils.h"
 #include "webgpu_manager.h"
-#include "generated/webgpu_serialiser.h"
+#include "webgpu_serialiser.h"
 
 #include "serialise/rdcfile.h"
 #include "serialise/serialiser.h"
@@ -239,6 +239,7 @@ RDResult WebGPUDriver::ReadLogInitialisation(RDCFile *rdc, bool storeStructuredB
   ReadSerialiser ser(reader, Ownership::Nothing);
 
   ser.SetUserData(GetResourceManager());
+  ser.SetStringDatabase(&m_Strings);
 
   ser.SetVersion(version);
 

@@ -26,7 +26,7 @@
 #include "webgpu_utils.h"
 #include "webgpu_capture.h"
 #include "webgpu_manager.h"
-#include "generated/webgpu_serialiser.h"
+#include "webgpu_serialiser.h"
 #include "generated/webgpu_macros.h"
 
 #include "hooks/hooks.h"

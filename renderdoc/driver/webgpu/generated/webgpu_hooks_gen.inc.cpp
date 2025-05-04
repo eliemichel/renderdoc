@@ -992,6 +992,16 @@ static WGPUShaderModule wgpuDeviceCreateShaderModule_hook(WGPUDevice device, WGP
   }
   return webgpuHooks.procs.wgpuDeviceCreateShaderModule(device, descriptor);
 }
+static WGPUTexture wgpuDeviceCreateTexture_hook(WGPUDevice device, WGPUTextureDescriptor const * descriptor) {
+  if(RenderDoc::Inst().IsFrameCapturing())
+  {
+    WriteSerialiser &ser = webgpuHooks.capturer.GetScratchSerialiser();
+    ser.SetActionChunk();
+    SCOPED_SERIALISE_CHUNK(WebGPUChunk::ProcDeviceCreateTexture);
+    webgpuHooks.capturer.AddChunk(scope.Get());
+  }
+  return webgpuHooks.procs.wgpuDeviceCreateTexture(device, descriptor);
+}
 static void wgpuDeviceDestroy_hook(WGPUDevice device) {
   if(RenderDoc::Inst().IsFrameCapturing())
   {

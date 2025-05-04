@@ -31,14 +31,17 @@
     <ClCompile Include="webgpu_capture.cpp">
       <Filter>Capture</Filter>
     </ClCompile>
-    <ClCompile Include="generated\webgpu_serialiser.cpp">
-      <Filter>Generated</Filter>
-    </ClCompile>
     <ClCompile Include="webgpu_utils.cpp">
       <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="webgpu_manager.cpp">
       <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="webgpu_serialiser.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="generated\webgpu_serialiser_gen.cpp">
+      <Filter>Generated</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -54,17 +57,20 @@
     <ClInclude Include="webgpu_capture.h">
       <Filter>Capture</Filter>
     </ClInclude>
-    <ClInclude Include="generated\webgpu_serialiser.h">
-      <Filter>Generated</Filter>
-    </ClInclude>
-    <ClInclude Include="generated\webgpu_macros.h">
-      <Filter>Generated</Filter>
-    </ClInclude>
     <ClInclude Include="webgpu_utils.h">
       <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="webgpu_manager.h">
       <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="webgpu_serialiser.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="generated\webgpu_macros_gen.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="generated\webgpu_serialiser_gen.h">
+      <Filter>Generated</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -213,6 +213,7 @@ private:
   SDFile *m_SDFile = nullptr;
 
   WebGPUResourceManager *m_ResourceManager;
+  std::set<rdcstr> m_Strings;
 
   APIProperties m_Props;
   rdcarray<ResourceDescription> m_Resources;
