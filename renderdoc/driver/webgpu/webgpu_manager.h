@@ -70,11 +70,13 @@ class WebGPUResourceManager : public ResourceManager<WebGPUResourceManagerConfig
 public:
   WebGPUResourceManager(CaptureState &state);
 
-#define HANDLE_RESOURCE(ResType) \
+#define HANDLE_RESOURCE(ResType)                              \
   void SetResourceHandle(ResourceId id, WGPU##ResType handle) \
   {                                                           \
     SetResourceHandle(id, (void *)handle);                    \
-  }
+  }                                                           \
+  ResourceId GetResourceId(WGPU##ResType handle) { return GetResourceId((void *)handle); } \
+  void ReleaseResource(WGPU##ResType handle) { ReleaseResource((void *)handle); }
   FOREACH_WEBGPU_RESOURCE_TYPE(HANDLE_RESOURCE)
 #undef HANDLE_RESOURCE
 
@@ -93,7 +95,15 @@ protected: // Implement ResourceManager abstract API
   void Apply_InitialState(WrappedResourceType live, InitialContentData &initial) override;
 
 private:
+  // Register a new resource handle and associate it an ID
   void SetResourceHandle(ResourceId id, void *handle);
+
+  // Retrieve the id associated to the handle
+  ResourceId GetResourceId(void *handle);
+
+  // Indicate that the handle is no longer used, because the same handle may be
+  // reused later to represent a new resource
+  void ReleaseResource(void *handle);
 
 private:
   // Map the actual resource handle to RenderDoc's resource ID

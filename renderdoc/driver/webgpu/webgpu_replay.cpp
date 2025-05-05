@@ -382,7 +382,7 @@ bool WebGPUDriver::ProcessChunk(ReadSerialiser &ser, WebGPUChunk context)
   case WebGPUChunk::Res##resType:                              \
   {                                                            \
     ResourceDescription rdDesc;                                \
-    WGPU##resType##Descriptor wgpuDesc;                            \
+    WGPU##resType##Descriptor wgpuDesc;                        \
     Serialize_WebGPUResource(ser, #resType, rdDesc, wgpuDesc); \
     rdDesc.type = ResourceType::Unknown; /* TODO(elie) */      \
     m_Resources.push_back(rdDesc);                             \
@@ -413,8 +413,14 @@ void WebGPUDriver::AddEvent(WebGPUChunk context, const WebGPUEventInfo& eventInf
   evt.chunkIndex = static_cast<uint32_t>(m_SDFile->chunks.size());
   m_SDFile->chunks.push_back(chunk);
 
-  // TODO(elie): read eventInfo
-  //m_ResourceUses
+  for(const auto &usageInfo : eventInfo.resourceUsages)
+  {
+    EventUsage usage;
+    usage.eventId = evt.eventId;
+    usage.usage = usageInfo.usage;
+    usage.view = usageInfo.view; // TODO(elie): Serialize resource + view
+    m_ResourceUses[usageInfo.view].push_back(usage);
+  }
 
   m_PendingEvents.push_back(evt);
 

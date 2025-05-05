@@ -90,7 +90,25 @@ void WebGPUResourceManager::SetResourceHandle(ResourceId id, void *handle)
   if(m_HandleToResourceId.find(handle) != m_HandleToResourceId.end())
   {
     throw std::runtime_error(
-        StringFormat::Fmt("Handle '%#010x' already has an associated resource!", handle).c_str());
+        StringFormat::Fmt("Handle '%#010x' already has an associated resource ID!", handle).c_str());
   }
   m_HandleToResourceId.insert({handle, id});
+}
+
+ResourceId WebGPUResourceManager::GetResourceId(void *handle)
+{
+  auto it = m_HandleToResourceId.find(handle);
+  if(it == m_HandleToResourceId.end())
+  {
+    return ResourceId::Null();
+  }
+  else
+  {
+    return it->second;
+  }
+}
+
+void WebGPUResourceManager::ReleaseResource(void *handle)
+{
+  m_HandleToResourceId.erase(handle);
 }
